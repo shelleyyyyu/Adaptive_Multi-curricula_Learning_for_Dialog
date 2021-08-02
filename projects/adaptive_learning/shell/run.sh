@@ -5,7 +5,7 @@ set -x
 
 FLAG=5
 
-declare -A models=(
+declare -p models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
   ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
   ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
@@ -13,7 +13,7 @@ declare -A models=(
   ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -A tasks=(
+declare -p tasks=(
   ["personachat_h3"]="adaptive_learning:personachat_h3"
   ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
   ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
@@ -24,7 +24,7 @@ declare -A tasks=(
   ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
 )
 
-declare -A subtasks_list=(
+declare -p subtasks_list=(
   ["specificity"]="avg_nidf"
   ["repetition"]="intrep_word"
   ["context-relatedness"]="lastuttsim"
@@ -38,7 +38,7 @@ declare -A subtasks_list=(
   ["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
 )
 
-declare -A bszs=(
+declare -p bszs=(
   ["seq2seq"]=256
   ["cvae"]=256
   ["transformer"]=128
@@ -46,7 +46,7 @@ declare -A bszs=(
   ["dialogwae"]=200
 )
 
-declare -A lrs=(
+declare -p lrs=(
   ["seq2seq"]=5e-4
   ["cvae"]=5e-4
   ["transformer"]=5e-4
@@ -117,7 +117,7 @@ function train_model() {
   fi
 
   # shellcheck disable=SC2155
-  local model_dir=${PARLAI_HOME}/models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -158,10 +158,13 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  cd ${PARLAI_HOME}
-  nohup python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
-  cd -
+  echo ${train_args}
+  echo ${model_file}
+
+  #cd ${PARLAI_HOME}
+  python ./projects/adaptive_learning/${train_script} ${train_args} #&>${model_file}.log &
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3 original 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=-1;
+train_model seq2seq personachat_h3 original 11000 -1 0.2 30
