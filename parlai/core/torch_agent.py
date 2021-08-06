@@ -1335,6 +1335,7 @@ class TorchAgent(Agent):
         preds = sorted((b, p) for b, p in self.replies['predictions'].items())
         return [p for b, p in preds]
 
+    #SHELLY: THE MAIN OBSERVE CLASS
     def observe(self, observation):
         """
         Process incoming message in preparation for producing a response.

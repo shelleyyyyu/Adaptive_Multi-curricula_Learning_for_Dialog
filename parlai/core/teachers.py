@@ -1064,6 +1064,7 @@ class FbDialogTeacher(DialogTeacher):
                     split[2] = None
 
                 # now check if we're at a new episode
+                #last_conv_id: last conversation id
                 if last_conv_id is None or conv_id <= last_conv_id:
                     x = x.strip()
                     if x:
@@ -1084,8 +1085,8 @@ class FbDialogTeacher(DialogTeacher):
                     else:
                         x = split[0]
                 last_conv_id = conv_id
-                if len(split) > 2 and split[2]:
-                    reward += float(split[2])
+                # if len(split) > 2 and split[2]:
+                #     reward += float(split[2])
 
                 if len(split) > 1 and split[1]:
                     # only generate an example if we have a y
@@ -1094,11 +1095,14 @@ class FbDialogTeacher(DialogTeacher):
                     split[1] = split[1].split('|')
                     if len(split) > 3:
                         # split label_candidates
-                        split[3] = split[3].split('|')
-                    if len(split) > 2:
-                        split[2] = reward
-                    else:
-                        split.append(reward)
+                        #split[3] = split[3].split('|')
+                        split[2] = split[2:]
+                        split = split[:3]
+
+                    # if len(split) > 2:
+                    #     split[2] = reward
+                    # else:
+                    #     split.append(reward)
                     if start:
                         yield split, True
                         start = False

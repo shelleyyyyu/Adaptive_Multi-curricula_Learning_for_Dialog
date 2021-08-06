@@ -27,11 +27,13 @@ import torch.nn.functional as F
 from collections import OrderedDict
 from .modules import PolicyNet, CriticNet
 from torch.distributions import Categorical
+#https://www.jianshu.com/p/c73948239c42
 from parlai.core.logs import TensorboardLogger
 from parlai.core.utils import Timer, round_sigfigs
 from parlai.core.teachers import FbDialogTeacher, DialogData
 
 
+# Check dataset path if dont exist will prompt warning message;
 def _path(opt, task_name, score_func):
     # Build the data if it doesn't exist.
     dt = opt['datatype'].split(':')[0]
@@ -41,6 +43,7 @@ def _path(opt, task_name, score_func):
 
 
 def get_init_teacher(opt, shared):
+    # if have initial parameters of the teacher will call the model and restrore info
     init_teacher = None
     if not shared:
         model_file = opt.get('model_file')
@@ -59,10 +62,16 @@ class DefaultTeacher(FbDialogTeacher):
         self.random_policy = opt.get('random_policy', False)
         self.count_sample = opt.get('count_sample', False)
         self.anti = opt.get('anti', False)
+        self.sample_threshold = opt.get('sample_threshold', 1000)
 
         if self.random_policy:
             random.seed(17)
-
+        # print(shared): None
+        # print(self.random_policy): False
+        # print(self.count_sample): False
+        # print(self.anti): False
+        # print(self.stream): False
+        # print(opt.get('pace_by', 'sample')): sample
         if not shared:
             if not self.stream and opt.get('pace_by', 'sample') == 'bucket':
                 score_list = [episode[0][2] for episode in self.data.data]
@@ -128,6 +137,7 @@ class DefaultTeacher(FbDialogTeacher):
 
         # build the policy net, criterion and optimizer here
         self.state_dim = 32 + len(self.tasks)  # hand-craft features
+        #TODO Why 32?
         self.action_dim = len(self.tasks)
 
         if not shared:
@@ -312,6 +322,7 @@ class DefaultTeacher(FbDialogTeacher):
                                 state[k] = v.cuda()
         return optimizer
 
+    # Load the states from the teacher filw
     def load(self, path):
         """
         Return opt and teacher states.
@@ -375,12 +386,14 @@ class DefaultTeacher(FbDialogTeacher):
                 return bucket_id
         raise ValueError('val %f is not >= any of the lower bounds: %s' % (val, bucket_lbs))
 
+    # SHELLY: Progressing Function f(*) calls root_p_pace for the algorithm
     def pace_function(self, states, sum_num, T=1000, c0=0.01, p=2):
         train_step = states['train_step']
         progress = self.root_p_pace(train_step, T, c0, p)
         return int(sum_num * progress)
 
     @staticmethod
+    # SHELLY: Progressing Function f(*)
     def root_p_pace(timestep, T=1000, c0=0.01, p=2):
         root_p = math.pow(timestep * (1 - math.pow(c0, p)) / T + math.pow(c0, p), 1.0 / p)
         return min(1.0, root_p)
@@ -394,6 +407,17 @@ class DefaultTeacher(FbDialogTeacher):
         # get next example, action is episode_done dict if already out of exs
         action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
         action['id'] = self.getID()
+        labels = action['labels']
+        rewards = action['reward']
+        # print(action): {'text': 'i wish i was faster ! i only go on walks as my exercise \n
+        # i wish i could get my glasses clean they are always dirty . \n
+        # you should get windex ! i have 4 children and they broke my glasses',
+        # 'labels': ('what a great idea ! i will try that . naughty children . . . .',),
+        # 'reward': ['0.19648091329149253', '0.25', '0.013630515895783901', '2.0837', '0.028986187651753426'],
+        # 'episode_done': True, 'id': 'adaptive_learning:personachat_h3'}
+        #
+        # print(labels): ('what a great idea ! i will try that . naughty children . . . .',)
+        # print(rewards): ['0.19648091329149253', '0.25', '0.013630515895783901', '2.0837', '0.028986187651753426']
 
         # remember correct answer if available
         self.lastY = action.get('labels', action.get('eval_labels', None))
@@ -403,8 +427,10 @@ class DefaultTeacher(FbDialogTeacher):
             # but this way the model can use the labels for perplexity or loss
             action = action.copy()
             labels = action.pop('labels')
+            rewards = action.pop('reward')
             if not self.opt.get('hide_labels', False):
                 action['eval_labels'] = labels
+            action['rewards'] = labels
 
         return action
 
@@ -493,13 +519,18 @@ class DefaultTeacher(FbDialogTeacher):
                         log = '[ {} {} ]'.format('Action probs:', action_p)
                         print(log)
                         self.action_log_time.reset()
+                print(action_probs)
+                print(action_probs[0])
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
+                print(action)
                 train_step = observations[0]['train_step']
                 self.saved_actions[train_step] = sample_from.log_prob(action)
                 self.saved_state_actions[train_step] = torch.cat([current_states, action_probs], dim=1)
                 selected_task = action.item()
                 self.subtask_counter[self.subtasks[selected_task]] += 1
+                print(self.subtask_counter)
+                print('-'*10)
 
                 probs = action_probs[0].tolist()
                 selection_report = {}
@@ -599,18 +630,27 @@ class DefaultTeacher(FbDialogTeacher):
                 if hasattr(self, 'subtask_counter'):
                     states4pace_func = {'train_step': self.subtask_counter[self.subtasks[task_idx]]}
 
-                threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
+                # TODO: SHELLY dont need pace_function always sample the sample from top self.threshold
+                # threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
+                sample_threshold = self.sample_threshold
+                # print("sample_threshold: %d" %sample_threshold)
                 if pace_by == 'sample':
-                    stop_step = threshold
+                    #stop_step = threshold
+                    stop_step = sample_threshold
                 elif pace_by == 'bucket':
                     stop_step = sum(self.bucket_cnt[:threshold])
                 else:
                     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
-
                 stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
                 # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
+                print(self.tasks[task_idx].data)
+                exit()
                 sampled_episode_idx = np.random.choice(stop_step)
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
+                #print("sample_threshold: %d" %sample_threshold)
+                #print('sampled_episode_idx: %d' %sampled_episode_idx)
+                #print('task_idx: %d' %task_idx)
+                #print('-'*20)
 
                 if self.anti:
                     sampled_episode_idx = self.num_episodes() - 1 - sampled_episode_idx
@@ -620,6 +660,7 @@ class DefaultTeacher(FbDialogTeacher):
 
             ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx)
 
+            #print(ex)
             if observation is None or self.opt['datatype'] != 'train':
                 self.episode_done = ex.get('episode_done', False)
                 if (not self.random and self.episode_done and

@@ -20,6 +20,7 @@ class PolicyNet(nn.Module):
 class CriticNet(nn.Module):
     def __init__(self, state_dim, action_dim):
         super().__init__()
+        #TODO why state_dim + action_dim
         self.critic = FeedForward(state_dim + action_dim, 1, hidden_sizes=(128, 64))
 
     def forward(self, state_actions):

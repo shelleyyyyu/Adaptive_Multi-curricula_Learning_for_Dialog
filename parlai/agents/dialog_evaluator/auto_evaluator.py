@@ -90,6 +90,7 @@ def clip_value(val, threshold):
         return val
 
 
+#SHELLY: EVALUATOR
 class TorchGeneratorWithDialogEvalAgent(TorchGeneratorAgent):
     """Agent with metrics for evaluating dialogue agent."""
 

@@ -238,6 +238,8 @@ class DialogPartnerWorld(World):
 
     def __init__(self, opt, agents, shared=None):
         super().__init__(opt)
+        # print(agents): [<parlai.tasks.adaptive_learning.agents.PersonachatH3Teacher object at 0x13bcb14e0>,
+        # <parlai.agents.adaptive_learning.dialog_wae.DialogWaeAgent object at 0x15773ecf8>]
         if shared:
             # Create agents based on shared data.
             self.agents = create_agents_from_shared(shared['agents'])
@@ -649,9 +651,7 @@ class BatchWorld(World):
         # Given batch observation, do update for agents[index].
         # Call update on agent
         a = self.world.get_agents()[agent_idx]
-        if hasattr(a, 'batch_act') and not (
-                hasattr(a, 'use_batch_act') and not a.use_batch_act
-        ):
+        if hasattr(a, 'batch_act') and not (hasattr(a, 'use_batch_act') and not a.use_batch_act):
             batch_actions = a.batch_act(batch_observation)
             # Store the actions locally in each world.
             for i, w in enumerate(self.worlds):
@@ -685,6 +685,7 @@ class BatchWorld(World):
             for w in self.worlds:
                 w.parley_init()
 
+        #Agents: Teacher; Model Agents
         for agent_idx in range(num_agents):
             # The agent acts.
             batch_act = self.batch_act(agent_idx, batch_observations[agent_idx])
@@ -1001,6 +1002,10 @@ def _get_task_world(opt, user_agents, default_world=None):
         else:
             world_name = "DefaultWorld"
         module_name = "parlai.tasks.%s.worlds" % (task)
+        # print(task_agents): parlai.tasks.adaptive_learning.agents.PersonachatH3Teacher
+        # print(world_name): Personachat_h3World
+        # print(module_name): parlai.tasks.adaptive_learning.worlds
+        # print(len(task_agents + user_agents)): 2
         try:
             my_module = importlib.import_module(module_name)
             world_class = getattr(my_module, world_name)
@@ -1019,6 +1024,7 @@ def create_task_world(opt, user_agents, default_world=None):
     world_class, task_agents = _get_task_world(
         opt, user_agents, default_world=default_world
     )
+    # print(world_class): parlai.core.worlds.DialogPartnerWorld
     return world_class(opt, task_agents + user_agents)
 
 

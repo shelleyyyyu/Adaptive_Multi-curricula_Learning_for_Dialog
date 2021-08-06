@@ -14,7 +14,6 @@ declare -p models=(
 )
 
 declare -p tasks=(
-  ["personachat_h3"]="adaptive_learning:personachat_h3"
   ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
   ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
   ["daily_dialog"]="adaptive_learning:daily_dialog"
@@ -22,6 +21,7 @@ declare -p tasks=(
   ["personachat_h3_sparse_original"]="adaptive_learning:personachat_h3_sparse_original"
   ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
   ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
+  ["personachat_h3"]="adaptive_learning:personachat_h3"
 )
 
 declare -p subtasks_list=(
@@ -35,7 +35,8 @@ declare -p subtasks_list=(
   ["loss_of_transformer"]="loss_of_transformer"
   ["loss_of_hred"]="loss_of_hred"
   ["loss_of_dialogwae"]="loss_of_dialogwae"
-  ["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
+  ["combine"]="combine"
+  #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
 )
 
 declare -p bszs=(
@@ -95,6 +96,7 @@ function train_model() {
   local validation_every_n_secs=$5
   local validation_every_n_epochs=$6
   local num_epochs=$7
+  local sample_threshold=$8
 
   local model=${models[$model_name]}
   if [[ "${attr}" == "original" ]]; then
@@ -112,9 +114,9 @@ function train_model() {
   fi
 
   local subtasks=${subtasks_list[${real_attr}]}
-  if [[ "${real_attr}" == "combine" ]]; then
-    subtasks=${subtasks}:loss_of_${model_name}
-  fi
+#  if [[ "${real_attr}" == "combine" ]]; then
+#    subtasks=${subtasks}:loss_of_${model_name}
+#  fi
 
   # shellcheck disable=SC2155
   local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
@@ -125,7 +127,7 @@ function train_model() {
 
   file_name=validby_${validation_metric_mode}_${validation_metric}_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
   # shellcheck disable=SC2155
-  local train_args=$(common_args " --model ${model} --task ${task} --subtasks ${subtasks} --learningrate ${lrs[$model_name]} --batchsize ${bszs[$model_name]} --validation_every_n_secs ${validation_every_n_secs} --validation_every_n_epochs ${validation_every_n_epochs}  --num_epochs ${num_epochs} ")
+  local train_args=$(common_args " --model ${model} --task ${task} --subtasks ${subtasks} --learningrate ${lrs[$model_name]} --batchsize ${bszs[$model_name]} --validation_every_n_secs ${validation_every_n_secs} --validation_every_n_epochs ${validation_every_n_epochs}  --num_epochs ${num_epochs} --sample_threshold ${sample_threshold} ")
 
   if [[ "${real_attr}" != "original" ]]; then
     file_name=${file_name}_T${T}_ANTI_${anti}
@@ -165,6 +167,6 @@ function train_model() {
   python ./projects/adaptive_learning/${train_script} ${train_args} #&>${model_file}.log &
 }
 
-# train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=-1;
-train_model seq2seq personachat_h3 original 11000 -1 0.2 30
+# train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS SAMPLE_THRESHOLD
+#export CUDA_VISIBLE_DEVICES=-1;
+train_model seq2seq personachat_h3 combine 11000 -1 0.2 30 1000

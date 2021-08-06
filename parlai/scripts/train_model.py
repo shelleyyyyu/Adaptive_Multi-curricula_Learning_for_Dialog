@@ -111,6 +111,9 @@ def setup_args(parser=None):
                        help='use a shared copy of the agent for validation. '
                             'this will eventually default to True, but '
                             'currently defaults to False.')
+    train.add_argument('-sample_threshold', '--sample_threshold', type=int, default='1000',
+                       hidden=True,
+                       help='sample_threshold')
     TensorboardLogger.add_cmdline_args(parser)
     parser = setup_dict_args(parser)
     return parser
@@ -230,6 +233,7 @@ class TrainLoop():
             build_dict(opt, skip_if_built=True)
         # Create model and assign it to the specified task
         self.agent = create_agent(opt)
+        # Create Task and Load data
         self.world = create_task(opt, self.agent)
         # set up timers
         self.train_time = Timer()

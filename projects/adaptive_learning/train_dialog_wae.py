@@ -11,7 +11,7 @@ from projects.adaptive_learning.utils import set_teacher_args
 from projects.adaptive_learning.utils import TENSORBOARD_METRICS
 
 # locale.setlocale(locale.LC_ALL, 'en_US')
-PARLAI_HOME = os.getenv('PARLAI_HOME')
+# PARLAI_HOME = os.getenv('PARLAI_HOME')
 
 OVERRIDE = {
     "datatype": 'train',
@@ -42,6 +42,7 @@ OVERRIDE = {
     "c0": 0.01,
     "p": 2,
     "beam_size": 1,
+    "sample_threshold": 1000
 }
 
 if __name__ == '__main__':
