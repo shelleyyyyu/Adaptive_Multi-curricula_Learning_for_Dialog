@@ -657,7 +657,13 @@ class DialogData(object):
         """
         # first look up data
         episode = self.data[episode_idx]
+        # print(episode_idx)
+        # print(episode)
         entry = episode[entry_idx]
+        # print(entry_idx)
+        # print(entry)
+        # print('_'*10)
+        #entry_idx 在現在設定就是為0 因為這份數據不包含多entry
         episode_done = entry_idx == len(episode) - 1
         end_of_data = episode_done and episode_idx == len(self.data) - 1
 

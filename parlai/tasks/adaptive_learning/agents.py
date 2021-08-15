@@ -58,11 +58,12 @@ class DefaultTeacher(FbDialogTeacher):
         opt = copy.deepcopy(opt)
         super().__init__(opt, shared)
         self.use_cuda = not opt['no_cuda'] and torch.cuda.is_available()
-        self.is_combine_attr = (hasattr(self, 'other_task_datafiles') and self.other_task_datafiles)
+        self.is_combine_attr = (hasattr(self, 'other_task_datafiles') and self.other_task_datafiles) or 'combine' in opt['subtasks']
         self.random_policy = opt.get('random_policy', False)
         self.count_sample = opt.get('count_sample', False)
         self.anti = opt.get('anti', False)
         self.sample_threshold = opt.get('sample_threshold', 1000)
+        self.train_sample_count = 0
 
         if self.random_policy:
             random.seed(17)
@@ -87,17 +88,24 @@ class DefaultTeacher(FbDialogTeacher):
             self.lastYs = [None] * self.bsz
             # build multiple task data
             self.tasks = [self.data]
-
+            #self.data.data[0]:
+            # (
+            #   ('i have to say we may never meet , i am uncomfortable in a formal situation \n i give people nicknames when i break the ice \n i like to go hitchhiking so maybe i can be hitchhiker ?',
+            #   ('i do . i love it .',),
+            #   ['0.062066366858700976', '0.2857142857142857', '0.11039432883262634', '2.4294', '-0.07580332458019257']),
+            # )
+            # self.is_combine_attr is True when subtask is combine
             if self.is_combine_attr:
-                print('[ build multiple task data ... ]')
-                for datafile in self.other_task_datafiles:
-                    task_opt = copy.deepcopy(opt)
-                    task_opt['datafile'] = datafile
-                    self.tasks.append(
-                        DialogData(task_opt, data_loader=self.setup_data,
-                                   cands=self.label_candidates())
-                    )
-                print('[ build multiple task data done! ]')
+                # Don't need to build multiple task, since
+                # print('[ build multiple task data ... ]')
+                # for datafile in self.other_task_datafiles:
+                #     task_opt = copy.deepcopy(opt)
+                #     task_opt['datafile'] = datafile
+                #     self.tasks.append(
+                #         DialogData(task_opt, data_loader=self.setup_data,
+                #                    cands=self.label_candidates())
+                #     )
+                # print('[ build multiple task data done! ]')
 
                 # record the selections of each subtasks
                 self.subtasks = opt['subtasks'].split(':')
@@ -136,9 +144,9 @@ class DefaultTeacher(FbDialogTeacher):
                 self.c_selections = shared['c_selections']
 
         # build the policy net, criterion and optimizer here
-        self.state_dim = 32 + len(self.tasks)  # hand-craft features
+        self.state_dim = 32  # hand-craft features
         #TODO Why 32?
-        self.action_dim = len(self.tasks)
+        self.action_dim = 5
 
         if not shared:
             self.policy = PolicyNet(self.state_dim, self.action_dim)
@@ -398,17 +406,24 @@ class DefaultTeacher(FbDialogTeacher):
         root_p = math.pow(timestep * (1 - math.pow(c0, p)) / T + math.pow(c0, p), 1.0 / p)
         return min(1.0, root_p)
 
-    def act(self, observation=None, task_idx=0):
+    def act(self, idx=0, observation=None, task_idx=0, score_list=None):
         """Send new dialog message."""
         if not hasattr(self, 'epochDone'):
             # reset if haven't yet
             self.reset()
 
         # get next example, action is episode_done dict if already out of exs
-        action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
+        action, self.epochDone = self.next_example(idx=idx, observation=observation, task_idx=task_idx, score_list=score_list)
         action['id'] = self.getID()
-        labels = action['labels']
-        rewards = action['reward']
+        if 'reward' in action:
+            labels = action['labels']
+        else:
+            labels = None
+
+        if 'reward' in action:
+            reward = action['reward']
+        else:
+            reward = None
         # print(action): {'text': 'i wish i was faster ! i only go on walks as my exercise \n
         # i wish i could get my glasses clean they are always dirty . \n
         # you should get windex ! i have 4 children and they broke my glasses',
@@ -427,10 +442,13 @@ class DefaultTeacher(FbDialogTeacher):
             # but this way the model can use the labels for perplexity or loss
             action = action.copy()
             labels = action.pop('labels')
-            rewards = action.pop('reward')
+            if 'rewards' in action:
+                rewards = action.pop('rewards')
+            else:
+                rewards = None
             if not self.opt.get('hide_labels', False):
                 action['eval_labels'] = labels
-            action['rewards'] = labels
+            action['eval_rewards'] = rewards
 
         return action
 
@@ -453,7 +471,6 @@ class DefaultTeacher(FbDialogTeacher):
 
         prob_desc = observations[0]['prob_desc']
         prob_desc = F.normalize(prob_desc, p=2, dim=-1)
-
         if hasattr(self, 'subtask_counter'):
             subtask_progress = self.subtask_counter.values()
             max_min = max(subtask_progress) - min(subtask_progress)
@@ -496,59 +513,69 @@ class DefaultTeacher(FbDialogTeacher):
                                     word_entropy_uni, word_entropy_bi, word_entropy_tri])
         if self.use_cuda:
             states = states.cuda()
-        states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
+        # states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
+        states = torch.cat([states, loss_desc, prob_desc], dim=-1).unsqueeze(dim=0)
+        print(states.size())
         return states
 
     def __uniform_weights(self):
-        w = 1 / len(self.tasks)
-        weights = torch.FloatTensor([w] * len(self.tasks))
+        w = 1 / self.task_count
+        weights = torch.FloatTensor([w] * self.task_count)
         if self.use_cuda:
             weights = weights.cuda()
         return weights.unsqueeze(dim=0)
 
     def __load_training_batch(self, observations):
-        if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
+        if observations and len(observations) > 0 and observations[0]: #and self.is_combine_attr:
             if not self.random_policy:
                 with torch.no_grad():
                     current_states = self._build_states(observations)
                 action_probs = self.policy(current_states)
-                if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                # current_states.size(): torch.Size([1, 32])
+                # action_probs: tensor([[0.2024, 0.2252, 0.1870, 0.1934, 0.1920]], grad_fn= < SoftmaxBackward >)
+                # action_probs.size(): torch.Size([1, 5])
+                # action_probs: [Action probs: 0.2024, 0.2252, 0.187, 0.1934, 0.192]
+                if self.action_log_time.time() > self.log_every_n_secs:
                     with torch.no_grad():
                         # log the action distributions
                         action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
                         log = '[ {} {} ]'.format('Action probs:', action_p)
                         print(log)
                         self.action_log_time.reset()
-                print(action_probs)
-                print(action_probs[0])
+                # 放到Categorical 選擇下一個option 但是這個針對新的方法不適用
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
-                print(action)
                 train_step = observations[0]['train_step']
                 self.saved_actions[train_step] = sample_from.log_prob(action)
                 self.saved_state_actions[train_step] = torch.cat([current_states, action_probs], dim=1)
-                selected_task = action.item()
-                self.subtask_counter[self.subtasks[selected_task]] += 1
-                print(self.subtask_counter)
-                print('-'*10)
-
+                #selected_task = action.item()
+                #self.subtask_counter[self.subtasks[selected_task]] += 1
                 probs = action_probs[0].tolist()
-                selection_report = {}
-                for idx, t in enumerate(self.subtasks):
-                    selection_report['p_{}'.format(t)] = probs[idx]
-                    self.p_selections[t].append(probs[idx])
-                    selection_report['c_{}'.format(t)] = self.subtask_counter[t]
-                    self.c_selections[t].append(self.subtask_counter[t])
-                self.writer.add_metrics(setting='Teacher/task_selection', step=train_step, report=selection_report)
+                # selection_report = {}
+                # for idx, t in enumerate(self.subtasks):
+                #     selection_report['p_{}'.format(t)] = probs[idx]
+                #     self.p_selections[t].append(probs[idx])
+                #     selection_report['c_{}'.format(t)] = self.subtask_counter[t]
+                #     self.c_selections[t].append(self.subtask_counter[t])
+                # self.writer.add_metrics(setting='Teacher/task_selection', step=train_step, report=selection_report)
+                selected_task = 0
+                score_list = {}
+                for idx, d in enumerate(self.data.data):
+                    new_score = 0
+                    for i in range(5):
+                        new_score += float(d[0][2][i])*float(probs[i])
+                    score_list[new_score] = idx
+                score_list = dict(sorted(score_list.items(), key=lambda item:item[0]))
             else:
-                selected_task = random.choice(range(len(self.tasks)))
+                selected_task = random.choice(range(self.task_count))
                 self.subtask_counter[self.subtasks[selected_task]] += 1
+                score_list = None
         else:
             selected_task = 0
+            score_list = None
+        return self.__load_batch(observations, task_idx=selected_task, score_list = score_list)
 
-        return self.__load_batch(observations, task_idx=selected_task)
-
-    def __load_batch(self, observations, task_idx=0):
+    def __load_batch(self, observations, task_idx=0, score_list=None):
         if observations is None:
             observations = [None] * self.bsz
         bsz = len(observations)
@@ -556,7 +583,7 @@ class DefaultTeacher(FbDialogTeacher):
         batch = []
         # Sample from multiple tasks using the policy net
         for idx in range(bsz):
-            batch.append(self.act(observations[idx], task_idx=task_idx))
+            batch.append(self.act(idx, observations[idx], task_idx=task_idx, score_list=score_list))
         return batch
 
     def batch_act(self, observations):
@@ -591,7 +618,7 @@ class DefaultTeacher(FbDialogTeacher):
 
         return batch
 
-    def next_example(self, observation=None, task_idx=0):
+    def next_example(self, idx=0, observation=None, task_idx=0, score_list=None):
         """
         Returns the next example.
 
@@ -617,35 +644,37 @@ class DefaultTeacher(FbDialogTeacher):
                 sampled_entry_idx = self.entry_idx
             else:
                 # --------------- pick the sample according to the pace function -----------
-                pace_by = self.opt.get('pace_by', 'sample')
-
-                if pace_by == 'sample':
-                    sum_num = self.num_episodes()
-                elif pace_by == 'bucket':
-                    sum_num = len(self.bucket_cnt)
-                else:
-                    raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
-
-                states4pace_func = observation
-                if hasattr(self, 'subtask_counter'):
-                    states4pace_func = {'train_step': self.subtask_counter[self.subtasks[task_idx]]}
+                # pace_by = self.opt.get('pace_by', 'sample')
+                #
+                # if pace_by == 'sample':
+                #     sum_num = self.num_episodes()
+                # elif pace_by == 'bucket':
+                #     sum_num = len(self.bucket_cnt)
+                # else:
+                #     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
+                #
+                # states4pace_func = observation
+                # if hasattr(self, 'subtask_counter'):
+                #     states4pace_func = {'train_step': self.subtask_counter[self.subtasks[task_idx]]}
+                # threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
 
                 # TODO: SHELLY dont need pace_function always sample the sample from top self.threshold
-                # threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
                 sample_threshold = self.sample_threshold
                 # print("sample_threshold: %d" %sample_threshold)
-                if pace_by == 'sample':
-                    #stop_step = threshold
-                    stop_step = sample_threshold
-                elif pace_by == 'bucket':
-                    stop_step = sum(self.bucket_cnt[:threshold])
-                else:
-                    raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
+                # if pace_by == 'sample':
+                #     #stop_step = threshold
+                #     stop_step = sample_threshold
+                # elif pace_by == 'bucket':
+                #     stop_step = sum(self.bucket_cnt[:threshold])
+                # else:
+                #     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
+                stop_step = sample_threshold
                 stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
                 # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
-                print(self.tasks[task_idx].data)
-                exit()
-                sampled_episode_idx = np.random.choice(stop_step)
+                # sampled_episode_idx = np.random.choice(stop_step)
+                if score_list:
+                    sampled_episode_idx = idx
+
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
                 #print("sample_threshold: %d" %sample_threshold)
                 #print('sampled_episode_idx: %d' %sampled_episode_idx)
@@ -658,26 +687,34 @@ class DefaultTeacher(FbDialogTeacher):
             if self.count_sample:
                 self.sample_counter[self.subtasks[task_idx]][sampled_episode_idx] += 1
 
-            ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx)
+            #ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx, score_list=score_list)
+            ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx, score_list=score_list)
+            self.train_sample_count += 1
+            # print(ex)
+            # exit()
 
-            #print(ex)
+
             if observation is None or self.opt['datatype'] != 'train':
                 self.episode_done = ex.get('episode_done', False)
+                # if (not self.random and self.episode_done and
+                #         self.episode_idx + self.opt.get("batchsize", 1) >= self.num_episodes()):
                 if (not self.random and self.episode_done and
-                        self.episode_idx + self.opt.get("batchsize", 1) >= self.num_episodes()):
+                        self.train_sample_count >= self.num_episodes()):
                     epoch_done = True
+                    self.train_sample_count = 0
                 else:
                     epoch_done = False
             else:
                 # in the setting of curriculum leaning, samples are not uniformly
                 # picked from the training set, so, the epoch records here make no sense.
                 epoch_done = False
-
             action = ex
 
         return action, epoch_done
 
-    def get(self, episode_idx, entry_idx=0, task_idx=0):
+    def get(self, episode_idx, entry_idx=0, task_idx=0, score_list=None):
+        if score_list:
+            episode_idx = score_list[list(score_list.keys())[episode_idx]]
         return self.tasks[task_idx].get(episode_idx, entry_idx)[0]
 
     def update_params(self):
@@ -713,7 +750,7 @@ class DefaultTeacher(FbDialogTeacher):
                     delt_reward1 = -delt_reward1
                     delt_reward0 = -delt_reward0
                 delt_reward = delt_reward1 / (delt_reward0 + 1e-6) - 1
-            if delt_reward and len(self.saved_actions) > 0 and len(self.saved_state_actions) > 0:
+            if delt_reward: #and len(self.saved_actions) > 0 and len(self.saved_state_actions) > 0:
                 reward = torch.clamp(torch.FloatTensor([delt_reward]), -10, 10)
                 if self.use_cuda:
                     reward = reward.cuda()

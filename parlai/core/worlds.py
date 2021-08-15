@@ -688,6 +688,7 @@ class BatchWorld(World):
         #Agents: Teacher; Model Agents
         for agent_idx in range(num_agents):
             # The agent acts.
+            # SHELLY: HERE CALL BATCH ACT
             batch_act = self.batch_act(agent_idx, batch_observations[agent_idx])
             self.acts[agent_idx] = batch_act
             # We possibly execute this action in the world.
