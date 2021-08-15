@@ -5,7 +5,7 @@ set -x
 
 FLAG=5
 
-declare -p models=(
+declare -A models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
   ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
   ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
@@ -13,7 +13,7 @@ declare -p models=(
   ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -p tasks=(
+declare -A tasks=(
   ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
   ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
   ["daily_dialog"]="adaptive_learning:daily_dialog"
@@ -24,7 +24,7 @@ declare -p tasks=(
   ["personachat_h3"]="adaptive_learning:personachat_h3"
 )
 
-declare -p subtasks_list=(
+declare -A subtasks_list=(
   ["specificity"]="avg_nidf"
   ["repetition"]="intrep_word"
   ["context-relatedness"]="lastuttsim"
@@ -39,7 +39,7 @@ declare -p subtasks_list=(
   #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
 )
 
-declare -p bszs=(
+declare -A bszs=(
   ["seq2seq"]=256
   ["cvae"]=256
   ["transformer"]=128
@@ -47,7 +47,7 @@ declare -p bszs=(
   ["dialogwae"]=200
 )
 
-declare -p lrs=(
+declare -A lrs=(
   ["seq2seq"]=5e-4
   ["cvae"]=5e-4
   ["transformer"]=5e-4
@@ -122,7 +122,7 @@ function train_model() {
   local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
-    mkdir -p "${model_dir}"
+    mkdir -A "${model_dir}"
   fi
 
   file_name=validby_${validation_metric_mode}_${validation_metric}_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
