@@ -59,7 +59,7 @@ if __name__ == '__main__':
         task='adaptive_learning:personachat_h3_sparse',
         subtasks='avg_nidf:intrep_word:lastuttsim:loss_of_seq2seq:post_sim',
         model='parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent',
-        model_file=os.path.join(PARLAI_HOME, 'models/adaptive_learning/personachat_h3_sparse'),
+        model_file=os.path.join('./models/adaptive_learning/personachat_h3_sparse'),
         dict_lower=True,
         dict_minfreq=-1,
         hiddensize=512,

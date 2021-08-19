@@ -3,7 +3,7 @@
 set -e
 set -x
 
-FLAG=5
+FLAG=0
 
 declare -A models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
@@ -117,7 +117,7 @@ function train_model() {
   fi
 
   # shellcheck disable=SC2155
-  local model_dir=${PARLAI_HOME}/models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -158,10 +158,10 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  cd ${PARLAI_HOME}
   nohup python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
   cd -
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3 original 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=0;
+train_model seq2seq personachat_h3 combine 11000 -1 0.2 30
