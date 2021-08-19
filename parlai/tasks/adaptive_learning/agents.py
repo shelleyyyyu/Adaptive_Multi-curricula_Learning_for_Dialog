@@ -94,7 +94,7 @@ class DefaultTeacher(FbDialogTeacher):
                 print('[ build multiple task data done! ]')
 
                 # record the selections of each subtasks
-                self.subtasks = [i for i in range(int(opt['subtasks'].split(':')[0]), int(opt['subtasks'].split(':')[1])+1)]
+                self.subtasks = [str(i) for i in range(int(opt['subtasks'].split(':')[0]), int(opt['subtasks'].split(':')[1])+1)]
                 self.subtask_counter = OrderedDict()
                 self.p_selections = OrderedDict()
                 self.c_selections = OrderedDict()
