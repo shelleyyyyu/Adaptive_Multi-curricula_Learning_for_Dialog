@@ -22,7 +22,7 @@ declare -A tasks=(
   ["personachat_h3_sparse_original"]="adaptive_learning:personachat_h3_sparse_original"
   ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
   ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
-  ["personachat_h3_dynamic"]=="adaptive_learning:personachat_h3_dynamic"
+  ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
 )
 
 declare -A subtasks_list=(
