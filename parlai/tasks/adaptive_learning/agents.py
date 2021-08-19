@@ -35,7 +35,10 @@ from parlai.core.teachers import FbDialogTeacher, DialogData
 def _path(opt, task_name, score_func):
     # Build the data if it doesn't exist.
     dt = opt['datatype'].split(':')[0]
-    _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, score_func, dt + '.txt')
+    if dt == 'valid' or dt == 'test':
+        _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, dt + '.txt')
+    else:
+        _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, score_func, dt + '.txt')
     assert os.path.exists(_file_path), 'Your dataset {} does dot exist!'.format(_file_path)
     return _file_path
 
@@ -91,7 +94,7 @@ class DefaultTeacher(FbDialogTeacher):
                 print('[ build multiple task data done! ]')
 
                 # record the selections of each subtasks
-                self.subtasks = opt['subtasks'].split(':')
+                self.subtasks = [i for i in range(int(opt['subtasks'].split(':')[0]), int(opt['subtasks'].split(':')[1])+1)]
                 self.subtask_counter = OrderedDict()
                 self.p_selections = OrderedDict()
                 self.c_selections = OrderedDict()
@@ -376,14 +379,18 @@ class DefaultTeacher(FbDialogTeacher):
         raise ValueError('val %f is not >= any of the lower bounds: %s' % (val, bucket_lbs))
 
     def pace_function(self, states, sum_num, T=1000, c0=0.01, p=2):
-        train_step = states['train_step']
-        progress = self.root_p_pace(train_step, T, c0, p)
+        # train_step = states['train_step']
+        # progress = self.root_p_pace(train_step, T, c0, p)
+        # TODO: set to 1.0 for random sampling training data for current experiment
+        progress = 1.0
         return int(sum_num * progress)
 
     @staticmethod
     def root_p_pace(timestep, T=1000, c0=0.01, p=2):
         root_p = math.pow(timestep * (1 - math.pow(c0, p)) / T + math.pow(c0, p), 1.0 / p)
+        # print("root_p_pace// root_p: %.4f" %(root_p))
         return min(1.0, root_p)
+
 
     def act(self, observation=None, task_idx=0):
         """Send new dialog message."""
@@ -568,6 +575,8 @@ class DefaultTeacher(FbDialogTeacher):
         one in that episode. If that episode is over, gets a new episode index
         and returns the first example of that episode.
         """
+        #Initilize the sum_num just for logging
+        sum_num = self.tasks[task_idx].num_episodes()  # self.num_episodes()
         if self.stream:
             action, epoch_done = self.tasks[task_idx].get()
         else:
@@ -589,7 +598,7 @@ class DefaultTeacher(FbDialogTeacher):
                 pace_by = self.opt.get('pace_by', 'sample')
 
                 if pace_by == 'sample':
-                    sum_num = self.num_episodes()
+                    sum_num = self.tasks[task_idx].num_episodes() #self.num_episodes()
                 elif pace_by == 'bucket':
                     sum_num = len(self.bucket_cnt)
                 else:
@@ -600,6 +609,8 @@ class DefaultTeacher(FbDialogTeacher):
                     states4pace_func = {'train_step': self.subtask_counter[self.subtasks[task_idx]]}
 
                 threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
+                #print('task_idx: %d; sum_num: %d' %(task_idx, sum_num))
+
                 if pace_by == 'sample':
                     stop_step = threshold
                 elif pace_by == 'bucket':
@@ -617,7 +628,7 @@ class DefaultTeacher(FbDialogTeacher):
 
             if self.count_sample:
                 self.sample_counter[self.subtasks[task_idx]][sampled_episode_idx] += 1
-
+            # print("task_idx: %d; sum_num: %d; sampled_episode_idx: %d; sampled_entry_idx: %d"%(task_idx, sum_num, sampled_episode_idx, sampled_entry_idx))
             ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx)
 
             if observation is None or self.opt['datatype'] != 'train':
@@ -846,6 +857,27 @@ class PersonachatH3Teacher(DefaultTeacher):
         for attr in subtasks[1:]:
             other_task_datafiles.append(
                 _path(opt, 'personachat_history3', attr)
+            )
+        self.other_task_datafiles = other_task_datafiles
+        super().__init__(opt, shared)
+
+
+class PersonachatH3DynamicTeacher(DefaultTeacher):
+    def __init__(self, opt, shared=None):
+        opt = copy.deepcopy(opt)
+        assert 'subtasks' in opt, 'subtasks must be specified!'
+        subtasks_num = opt['subtasks'].split(':')
+        if 'out_of_cluster' in subtasks_num:
+            subtasks_num = subtasks_num[1:]
+            subtasks = ['out_of_cluster']
+        else:
+            subtasks = []
+        subtasks += [i for i in range(int(subtasks_num[0]), int(subtasks_num[1])+1)]
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic', str(subtasks[0]))
+        other_task_datafiles = []
+        for attr in subtasks[1:]:
+            other_task_datafiles.append(
+                _path(opt, 'personachat_history3_dynamic', str(attr))
             )
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)

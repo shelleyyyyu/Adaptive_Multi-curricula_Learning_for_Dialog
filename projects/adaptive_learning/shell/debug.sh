@@ -5,55 +5,24 @@ set -x
 
 FLAG=0
 
-declare -A models=(
+declare -p models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
-  ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
-  ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
-  ["hred"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
-  ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -A tasks=(
-  ["personachat_h3"]="adaptive_learning:personachat_h3"
-  ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
-  ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
-  ["daily_dialog"]="adaptive_learning:daily_dialog"
-  ["personachat_h3_original"]="adaptive_learning:personachat_h3_original"
-  ["personachat_h3_sparse_original"]="adaptive_learning:personachat_h3_sparse_original"
-  ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
-  ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
-  ["personachat_h3_dynamic"]=="adaptive_learning:personachat_h3_dynamic"
+declare -p tasks=(
+  ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
 )
 
-declare -A subtasks_list=(
-  ["specificity"]="avg_nidf"
-  ["repetition"]="intrep_word"
-  ["context-relatedness"]="lastuttsim"
-  ["continuity"]="post_sim"
-  ["original"]="original"
-  ["loss_of_seq2seq"]="loss_of_seq2seq"
-  ["loss_of_cvae"]="loss_of_cvae"
-  ["loss_of_transformer"]="loss_of_transformer"
-  ["loss_of_hred"]="loss_of_hred"
-  ["loss_of_dialogwae"]="loss_of_dialogwae"
-  #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
+declare -p subtasks_list=(
   ["combine"]="0:37"
 )
 
-declare -A bszs=(
-  ["seq2seq"]=128 #256
-  ["cvae"]=256
-  ["transformer"]=128
-  ["hred"]=200
-  ["dialogwae"]=200
+declare -p bszs=(
+  ["seq2seq"]=128
 )
 
-declare -A lrs=(
+declare -p lrs=(
   ["seq2seq"]=5e-4
-  ["cvae"]=5e-4
-  ["transformer"]=5e-4
-  ["hred"]=1
-  ["dialogwae"]=1
 )
 
 #---------------- main arguments -----------------#
@@ -160,10 +129,10 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
+  python ./projects/adaptive_learning/${train_script} ${train_args} #&>${model_file}.log &
   cd -
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0;
-train_model seq2seq personachat_h3_dynamic combine 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=-1;
+train_model seq2seq personachat_h3_dynamic combine 11000 -1 0.2 1
