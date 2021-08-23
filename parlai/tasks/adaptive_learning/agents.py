@@ -882,6 +882,25 @@ class PersonachatH3DynamicTeacher(DefaultTeacher):
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)
 
+class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
+    def __init__(self, opt, shared=None):
+        opt = copy.deepcopy(opt)
+        assert 'subtasks' in opt, 'subtasks must be specified!'
+        subtasks_num = opt['subtasks'].split(':')
+        if 'out_of_cluster' in subtasks_num:
+            subtasks_num = subtasks_num[1:]
+            subtasks = ['out_of_cluster']
+        else:
+            subtasks = []
+        subtasks += [i for i in range(int(subtasks_num[0]), int(subtasks_num[1])+1)]
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_kmeans', str(subtasks[0]))
+        other_task_datafiles = []
+        for attr in subtasks[1:]:
+            other_task_datafiles.append(
+                _path(opt, 'personachat_history3_dynamic', str(attr))
+            )
+        self.other_task_datafiles = other_task_datafiles
+        super().__init__(opt, shared)
 
 class PersonachatH3OriginalTeacher(FbDialogTeacher):
     def __init__(self, opt, shared=None):
