@@ -23,7 +23,7 @@ declare -A tasks=(
   ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
   ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
   ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
-  ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
+  ["personachat_h3_dynamic_km"]="adaptive_learning:personachat_h3_dynamic_km"
 )
 
 declare -A subtasks_list=(
@@ -167,4 +167,4 @@ function train_model() {
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
 export CUDA_VISIBLE_DEVICES=0;
-train_model seq2seq personachat_h3_dynamic_kmeans combine 11000 -1 0.2 50
+train_model seq2seq personachat_h3_dynamic_km combine 11000 -1 0.2 50
