@@ -897,7 +897,7 @@ class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
         other_task_datafiles = []
         for attr in subtasks[1:]:
             other_task_datafiles.append(
-                _path(opt, 'personachat_history3_dynamic', str(attr))
+                _path(opt, 'personachat_history3_dynamic_kmeans', str(attr))
             )
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)
