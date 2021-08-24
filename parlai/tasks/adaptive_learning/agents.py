@@ -32,13 +32,13 @@ from parlai.core.utils import Timer, round_sigfigs
 from parlai.core.teachers import FbDialogTeacher, DialogData
 
 
-def _path(opt, task_name, score_func):
+def _path(opt, task_name, score_func, sub_task_name=''):
     # Build the data if it doesn't exist.
     dt = opt['datatype'].split(':')[0]
     if dt == 'valid' or dt == 'test':
         _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, dt + '.txt')
     else:
-        _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, score_func, dt + '.txt')
+        _file_path = os.path.join(opt['datapath'], 'AdaptiveLearning', task_name, sub_task_name, score_func, dt + '.txt')
     assert os.path.exists(_file_path), 'Your dataset {} does dot exist!'.format(_file_path)
     return _file_path
 
@@ -888,11 +888,11 @@ class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
         assert 'subtasks' in opt, 'subtasks must be specified!'
         subtasks_num = opt['subtasks'].split(':')
         subtasks = [i for i in range(int(subtasks_num[1]), int(subtasks_num[2])+1)]
-        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_kmeans', subtasks_num[0], str(subtasks[0]))
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_kmeans', str(subtasks[0], sub_task_name= subtasks_num[0]))
         other_task_datafiles = []
         for attr in subtasks[1:]:
             other_task_datafiles.append(
-                _path(opt, 'personachat_history3_dynamic_kmeans', str(attr))
+                _path(opt, 'personachat_history3_dynamic_kmeans', subtasks_num[0], str(attr))
             )
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)
