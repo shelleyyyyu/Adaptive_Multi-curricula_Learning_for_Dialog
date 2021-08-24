@@ -5,7 +5,7 @@ set -x
 
 FLAG=0
 
-declare -A models=(
+declare -p models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
   ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
   ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
@@ -13,7 +13,7 @@ declare -A models=(
   ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -A tasks=(
+declare -p tasks=(
   ["personachat_h3"]="adaptive_learning:personachat_h3"
   ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
   ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
@@ -26,7 +26,7 @@ declare -A tasks=(
   ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
 )
 
-declare -A subtasks_list=(
+declare -p subtasks_list=(
   ["specificity"]="avg_nidf"
   ["repetition"]="intrep_word"
   ["context-relatedness"]="lastuttsim"
@@ -38,10 +38,14 @@ declare -A subtasks_list=(
   ["loss_of_hred"]="loss_of_hred"
   ["loss_of_dialogwae"]="loss_of_dialogwae"
   #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
-  ["combine"]="0:99"
+  ["combine_v1"]="kmeans_v1:0:99"
+  ["combine_v2"]="kmeans_v1:0:9"
+  ["combine_v3"]="kmeans_v1:0:19"
+  ["combine_v4"]="kmeans_v1:0:29"
+  ["combine_v5"]="kmeans_v1:0:49"
 )
 
-declare -A bszs=(
+declare -p bszs=(
   ["seq2seq"]=16 #256
   ["cvae"]=256
   ["transformer"]=128
@@ -49,7 +53,7 @@ declare -A bszs=(
   ["dialogwae"]=200
 )
 
-declare -A lrs=(
+declare -p lrs=(
   ["seq2seq"]=5e-4
   ["cvae"]=5e-4
   ["transformer"]=5e-4
@@ -167,4 +171,4 @@ function train_model() {
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
 export CUDA_VISIBLE_DEVICES=0;
-train_model seq2seq personachat_h3_dynamic_kmeans combine 11000 -1 0.2 50
+train_model seq2seq personachat_h3_dynamic_kmeans combine_v2 11000 -1 0.2 50

@@ -887,13 +887,8 @@ class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
         opt = copy.deepcopy(opt)
         assert 'subtasks' in opt, 'subtasks must be specified!'
         subtasks_num = opt['subtasks'].split(':')
-        if 'out_of_cluster' in subtasks_num:
-            subtasks_num = subtasks_num[1:]
-            subtasks = ['out_of_cluster']
-        else:
-            subtasks = []
-        subtasks += [i for i in range(int(subtasks_num[0]), int(subtasks_num[1])+1)]
-        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_kmeans', str(subtasks[0]))
+        subtasks = [i for i in range(int(subtasks_num[1]), int(subtasks_num[2])+1)]
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_kmeans', subtasks_num[0], str(subtasks[0]))
         other_task_datafiles = []
         for attr in subtasks[1:]:
             other_task_datafiles.append(
