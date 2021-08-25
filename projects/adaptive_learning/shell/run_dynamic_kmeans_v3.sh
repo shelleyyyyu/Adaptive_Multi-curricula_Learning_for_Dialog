@@ -39,10 +39,10 @@ declare -A subtasks_list=(
   ["loss_of_dialogwae"]="loss_of_dialogwae"
   #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
   ["combine_v1"]="kmeans_v1:0:99"
-  ["combine_v2"]="kmeans_v1:0:9"
-  ["combine_v3"]="kmeans_v1:0:19"
-  ["combine_v4"]="kmeans_v1:0:29"
-  ["combine_v5"]="kmeans_v1:0:49"
+  ["combine_v2"]="kmeans_v2:0:9"
+  ["combine_v3"]="kmeans_v3:0:19"
+  ["combine_v4"]="kmeans_v4:0:29"
+  ["combine_v5"]="kmeans_v5:0:49"
 )
 
 declare -A bszs=(
