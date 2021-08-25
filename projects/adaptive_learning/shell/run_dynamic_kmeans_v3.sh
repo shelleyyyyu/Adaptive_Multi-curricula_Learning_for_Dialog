@@ -5,7 +5,7 @@ set -x
 
 FLAG=0
 
-declare -p models=(
+declare -A models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
   ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
   ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
@@ -13,7 +13,7 @@ declare -p models=(
   ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -p tasks=(
+declare -A tasks=(
   ["personachat_h3"]="adaptive_learning:personachat_h3"
   ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
   ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
@@ -26,7 +26,7 @@ declare -p tasks=(
   ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
 )
 
-declare -p subtasks_list=(
+declare -A subtasks_list=(
   ["specificity"]="avg_nidf"
   ["repetition"]="intrep_word"
   ["context-relatedness"]="lastuttsim"
@@ -45,7 +45,7 @@ declare -p subtasks_list=(
   ["combine_v5"]="kmeans_v1:0:49"
 )
 
-declare -p bszs=(
+declare -A bszs=(
   ["seq2seq"]=16 #256
   ["cvae"]=256
   ["transformer"]=128
@@ -53,7 +53,7 @@ declare -p bszs=(
   ["dialogwae"]=200
 )
 
-declare -p lrs=(
+declare -A lrs=(
   ["seq2seq"]=5e-4
   ["cvae"]=5e-4
   ["transformer"]=5e-4
