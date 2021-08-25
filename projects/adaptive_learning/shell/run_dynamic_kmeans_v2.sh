@@ -46,7 +46,7 @@ declare -A subtasks_list=(
 )
 
 declare -A bszs=(
-  ["seq2seq"]=16 #256
+  ["seq2seq"]=32 #256
   ["cvae"]=256
   ["transformer"]=128
   ["hred"]=200
