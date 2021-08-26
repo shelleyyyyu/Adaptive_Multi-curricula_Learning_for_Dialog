@@ -495,7 +495,7 @@ class DefaultTeacher(FbDialogTeacher):
                 action_probs = self.policy(current_states)
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
-                if True:#self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
                         action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
