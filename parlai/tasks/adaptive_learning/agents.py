@@ -493,15 +493,15 @@ class DefaultTeacher(FbDialogTeacher):
                 with torch.no_grad():
                     current_states = self._build_states(observations)
                 action_probs = self.policy(current_states)
-                if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                sample_from = Categorical(action_probs[0])
+                action = sample_from.sample()
+                if True:#self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
                         action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
-                        log = '[ {} {} ]'.format('Action probs:', action_p)
+                        log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
                         print(log)
                         self.action_log_time.reset()
-                sample_from = Categorical(action_probs[0])
-                action = sample_from.sample()
                 train_step = observations[0]['train_step']
                 self.saved_actions[train_step] = sample_from.log_prob(action)
                 self.saved_state_actions[train_step] = torch.cat([current_states, action_probs], dim=1)
