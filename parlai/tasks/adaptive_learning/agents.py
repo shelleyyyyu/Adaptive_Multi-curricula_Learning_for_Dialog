@@ -379,10 +379,10 @@ class DefaultTeacher(FbDialogTeacher):
         raise ValueError('val %f is not >= any of the lower bounds: %s' % (val, bucket_lbs))
 
     def pace_function(self, states, sum_num, T=1000, c0=0.01, p=2):
-        # train_step = states['train_step']
-        # progress = self.root_p_pace(train_step, T, c0, p)
-        # TODO: set to 1.0 for random sampling training data for current experiment
-        progress = 1.0
+        train_step = states['train_step']
+        progress = self.root_p_pace(train_step, T, c0, p)
+        # # TODO: set to 1.0 for random sampling training data for current experiment
+        # progress = 1.0
         return int(sum_num * progress)
 
     @staticmethod
