@@ -1027,7 +1027,7 @@ class FbDialogTeacher(DialogTeacher):
             c: ['hallway', 'kitchen', 'bathroom']
             new_episode = False (this is the second example in the episode)
         """
-        #TODO: remove this log 
+        #TODO: remove this log
         #print("[loading fbdialog data:" + path + "]")
         with open(path) as read:
             start = True
