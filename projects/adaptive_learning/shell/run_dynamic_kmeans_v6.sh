@@ -43,7 +43,7 @@ declare -A subtasks_list=(
   ["combine_v3"]="kmeans_v3:0:19"
   ["combine_v4"]="kmeans_v4:0:29"
   ["combine_v5"]="kmeans_v5:0:49"
-  ["combine_v6"]="kmeans_v5:0:999"
+  ["combine_v6"]="kmeans_v6:0:999"
 )
 
 declare -A bszs=(
