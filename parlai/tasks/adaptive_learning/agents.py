@@ -397,7 +397,7 @@ class DefaultTeacher(FbDialogTeacher):
         if not hasattr(self, 'epochDone'):
             # reset if haven't yet
             self.reset()
-        print('act task_idx: %d'%(task_idx))
+        # print('act task_idx: %d'%(task_idx))
         # get next example, action is episode_done dict if already out of exs
         action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
         action['id'] = self.getID()
@@ -516,7 +516,7 @@ class DefaultTeacher(FbDialogTeacher):
                     selection_report['c_{}'.format(t)] = self.subtask_counter[t]
                     self.c_selections[t].append(self.subtask_counter[t])
                 self.writer.add_metrics(setting='Teacher/task_selection', step=train_step, report=selection_report)
-                print("__load_training_batch selected_task: %d" %(selected_task))
+                # print("__load_training_batch selected_task: %d" %(selected_task))
             else:
                 selected_task = random.choice(range(len(self.tasks)))
                 self.subtask_counter[self.subtasks[selected_task]] += 1
@@ -526,7 +526,7 @@ class DefaultTeacher(FbDialogTeacher):
         return self.__load_batch(observations, task_idx=selected_task)
 
     def __load_batch(self, observations, task_idx=0):
-        print('__load_batch task_idx: %d' % (task_idx))
+        # print('__load_batch task_idx: %d' % (task_idx))
         if observations is None:
             observations = [None] * self.bsz
         bsz = len(observations)
@@ -620,8 +620,8 @@ class DefaultTeacher(FbDialogTeacher):
                 else:
                     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
 
-                stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
                 stop_step = self.bsz if stop_step < self.bsz else stop_step
+                stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
                 # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
                 sampled_episode_idx = np.random.choice(stop_step)
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
@@ -631,8 +631,8 @@ class DefaultTeacher(FbDialogTeacher):
 
             if self.count_sample:
                 self.sample_counter[self.subtasks[task_idx]][sampled_episode_idx] += 1
-            print("task_idx: %d; sum_num: %d; sampled_episode_idx: %d; threshold: %d; stop_step: %d"%(task_idx, sum_num, sampled_episode_idx, threshold, stop_step))
-            print('-'*20)
+            # print("task_idx: %d; sum_num: %d; sampled_episode_idx: %d; threshold: %d; stop_step: %d"%(task_idx, sum_num, sampled_episode_idx, threshold, stop_step))
+            # print('-'*20)
             ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx)
 
             if observation is None or self.opt['datatype'] != 'train':
