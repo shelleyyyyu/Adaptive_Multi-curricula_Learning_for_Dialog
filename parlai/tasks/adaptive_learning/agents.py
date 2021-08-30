@@ -590,7 +590,7 @@ class DefaultTeacher(FbDialogTeacher):
 
             if self.episode_idx >= self.num_episodes():
                 return {'episode_done': True}, True
-            threshold = -1
+            threshold, stop_step = -1, -1
             if observation is None or self.opt['datatype'] != 'train':
                 # The first step of the training or validation mode
                 sampled_episode_idx = self.episode_idx
