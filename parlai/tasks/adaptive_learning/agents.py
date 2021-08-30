@@ -493,14 +493,31 @@ class DefaultTeacher(FbDialogTeacher):
                 with torch.no_grad():
                     current_states = self._build_states(observations)
                 action_probs = self.policy(current_states)
+                selectable_task = []
+                for i in range(len(self.tasks)):
+                    if int(len([idx for idx, sample in enumerate(self.sample_counter[self.subtasks[i]]) if self.sample_counter[self.subtasks[i]][idx] == 0])) > int(self.bsz):
+                        selectable_task.append(i)
                 sample_from = Categorical(action_probs[0])
-                action = sample_from.sample()
+                if len(selectable_task) > 0:
+                    is_selected = False
+                    while not is_selected:
+                        action = sample_from.sample()
+                        if action in selectable_task:
+                            is_selected = True
+                else:
+                    action = sample_from.sample()
+
+                not_selectable_task = []
+                for i in range(len(self.tasks)):
+                    if int(len([idx for idx, sample in enumerate(self.sample_counter[self.subtasks[i]]) if self.sample_counter[self.subtasks[i]][idx] == 0])) < int(self.bsz):
+                        not_selectable_task.append(i)
+
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
-                        action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
-                        #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
-                        log = '[ {} {}]'.format('Selected Action:', action)
+                        # action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
+                        # log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
+                        log = '[ {} {} ]'.format('Selected Action:', action)
                         print(log)
                         self.action_log_time.reset()
                 train_step = observations[0]['train_step']
@@ -611,21 +628,36 @@ class DefaultTeacher(FbDialogTeacher):
                 if hasattr(self, 'subtask_counter'):
                     states4pace_func = {'train_step': self.subtask_counter[self.subtasks[task_idx]]}
 
-                threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
-                #print('task_idx: %d; sum_num: %d' %(task_idx, sum_num))
+                # threshold = self.pace_function(states4pace_func, sum_num, self.T, self.c0, self.p)
+                # #print('task_idx: %d; sum_num: %d' %(task_idx, sum_num))
+                #
+                # if pace_by == 'sample':
+                #     stop_step = threshold
+                # elif pace_by == 'bucket':
+                #     stop_step = sum(self.bucket_cnt[:threshold])
+                # else:
+                #     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
+                #
+                # stop_step = self.bsz if stop_step < self.bsz else stop_step
+                # stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
+                # # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
+                # sampled_episode_idx = np.random.choice(stop_step)
+                # sampled_entry_idx = 0  # make sure the episode only contains one entry
 
-                if pace_by == 'sample':
-                    stop_step = threshold
-                elif pace_by == 'bucket':
-                    stop_step = sum(self.bucket_cnt[:threshold])
-                else:
-                    raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
+                tmp_list = self.sample_counter[self.subtasks[task_idx]]
+                sample_idx_list = [int(idx) for idx, sample in enumerate(tmp_list) if int(tmp_list[idx]) == 0]
 
-                stop_step = self.bsz if stop_step < self.bsz else stop_step
-                stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
-                # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
-                sampled_episode_idx = np.random.choice(stop_step)
+
+                sampled_episode_idx = np.random.choice(sample_idx_list)
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
+
+                # print(tmp_list)
+                # print(sample_idx_list)
+                # print(len(tmp_list))
+                # print(len(sample_idx_list))
+                # print(type(tmp_list[0]))
+                # print(type(sample_idx_list[0]))
+                # print('-'*20)
 
                 if self.anti:
                     sampled_episode_idx = self.num_episodes() - 1 - sampled_episode_idx

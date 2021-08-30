@@ -9,7 +9,7 @@ def set_teacher_args(parser):
     parser.add_argument('--reward_metric_mode', type=str, choices=['min', 'max'], default='min')
     parser.add_argument('--subtasks', type=str, default='original')
     parser.add_argument('--random_policy', type='bool', default=False)
-    parser.add_argument('--count_sample', type='bool', default=False)
+    parser.add_argument('--count_sample', type='bool', default=True)
     parser.add_argument('--anti', type='bool', default=False)
 
     parser.add_argument('--cutoff_metric_name', type=str, default='none')
