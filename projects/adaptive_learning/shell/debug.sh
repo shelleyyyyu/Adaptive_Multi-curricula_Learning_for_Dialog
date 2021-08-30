@@ -5,23 +5,23 @@ set -x
 
 FLAG=0
 
-declare -p models=(
+declare -A models=(
   ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
 )
 
-declare -p tasks=(
-  ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
+declare -A tasks=(
+  ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
 )
 
-declare -p subtasks_list=(
-  ["combine"]="0:37"
+declare -A subtasks_list=(
+  ["combine_v6"]="kmeans_v6:0:999"
 )
 
-declare -p bszs=(
-  ["seq2seq"]=128
+declare -A bszs=(
+  ["seq2seq"]=32 #256
 )
 
-declare -p lrs=(
+declare -A lrs=(
   ["seq2seq"]=5e-4
 )
 
@@ -88,7 +88,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_v2/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -129,10 +129,10 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  python ./projects/adaptive_learning/${train_script} ${train_args} #&>${model_file}.log &
+  python ./projects/adaptive_learning/${train_script} ${train_args}
   cd -
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
 export CUDA_VISIBLE_DEVICES=-1;
-train_model seq2seq personachat_h3_dynamic combine 11000 -1 0.2 1
+train_model seq2seq personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50

@@ -619,10 +619,9 @@ class DefaultTeacher(FbDialogTeacher):
                     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
 
                 stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
+                stop_step = self.bsz if stop_step < self.bsz else stop_step
                 # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
                 sampled_episode_idx = np.random.choice(stop_step)
-                if stop_step == 0:
-                    stop_step=self.bsz
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
 
                 if self.anti:
