@@ -499,7 +499,8 @@ class DefaultTeacher(FbDialogTeacher):
                     with torch.no_grad():
                         # log the action distributions
                         action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
-                        log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
+                        #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
+                        log = '[ {} {}]'.format('Selected Action:', action)
                         print(log)
                         self.action_log_time.reset()
                 train_step = observations[0]['train_step']
