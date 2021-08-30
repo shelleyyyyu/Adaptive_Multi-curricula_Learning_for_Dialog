@@ -656,6 +656,7 @@ class DialogData(object):
             single-entry episodes, so this defaults to zero.
         """
         # first look up data
+        print("len(self.data): %d; episode_idx: %d; entry_idx: %d"%(len(self.data), episode_idx, entry_idx))
         episode = self.data[episode_idx]
         entry = episode[entry_idx]
         episode_done = entry_idx == len(episode) - 1
