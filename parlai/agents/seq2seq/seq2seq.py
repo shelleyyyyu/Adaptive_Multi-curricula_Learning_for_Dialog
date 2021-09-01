@@ -331,12 +331,12 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
         if batch.label_vec is not None:
             label_text = batch.labels
             # we are in the validation mode, print some generated responses for debugging
-            for i in range(len(preds)):
-                if random.random() > (1 - self.opt['report_freq']):
-                    context_text = batch.observations[i]['text']
-                    print('TEXT: ', context_text)
-                    print('TARGET: ', self._v2t(batch.label_vec[i]))
-                    print('PREDICTION: ', self._v2t(preds[i]), '\n~')
+            for i in range(len(preds[:5])):
+                #if random.random() > (1 - self.opt['report_freq']):
+                context_text = batch.observations[i]['text']
+                print('TEXT: ', context_text)
+                print('TARGET: ', self._v2t(batch.label_vec[i]))
+                print('PREDICTION: ', self._v2t(preds[i]), '\n~')
         else:
             label_text = None
 
