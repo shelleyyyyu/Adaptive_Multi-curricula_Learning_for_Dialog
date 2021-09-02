@@ -567,6 +567,7 @@ class TrainLoop():
                 )
                 exs_per_epoch = self.world.num_examples()
                 self._total_exs = int(np.round(self._total_epochs * exs_per_epoch))
+                # TODO: EPOCHS SETTING
 
                 # and use the primary worker's timings for everything
                 train_time, log_time, validate_time = sync_object((

@@ -95,6 +95,7 @@ class DefaultTeacher(FbDialogTeacher):
 
                 # record the selections of each subtasks
                 self.subtasks = [str(i) for i in range(int(opt['subtasks'].split(':')[1]), int(opt['subtasks'].split(':')[2])+1)]
+                #self.subtasks = opt['subtasks'].split(':')
                 self.subtask_counter = OrderedDict()
                 self.p_selections = OrderedDict()
                 self.c_selections = OrderedDict()
@@ -589,7 +590,7 @@ class DefaultTeacher(FbDialogTeacher):
             else:
                 self.entry_idx += 1
 
-            if self.episode_idx >= self.num_episodes():
+            if self.episode_idx >= sum_num:
                 return {'episode_done': True}, True
             threshold, stop_step = -1, -1
             if observation is None or self.opt['datatype'] != 'train':
@@ -622,13 +623,13 @@ class DefaultTeacher(FbDialogTeacher):
                     raise ValueError('pace_by must be {} or {}!'.format('sample', 'bucket'))
 
                 stop_step = self.bsz if stop_step < self.bsz else stop_step
-                stop_step = self.num_episodes() if stop_step > self.num_episodes() else stop_step
+                stop_step = sum_num if stop_step > sum_num else stop_step
                 # sampled_episode_idx = random.choice(list(range(self.num_episodes()))[:stop_step])
                 sampled_episode_idx = np.random.choice(stop_step)
                 sampled_entry_idx = 0  # make sure the episode only contains one entry
 
                 if self.anti:
-                    sampled_episode_idx = self.num_episodes() - 1 - sampled_episode_idx
+                    sampled_episode_idx = sum_num - 1 - sampled_episode_idx
 
             if self.count_sample:
                 self.sample_counter[self.subtasks[task_idx]][sampled_episode_idx] += 1
@@ -639,7 +640,7 @@ class DefaultTeacher(FbDialogTeacher):
             if observation is None or self.opt['datatype'] != 'train':
                 self.episode_done = ex.get('episode_done', False)
                 if (not self.random and self.episode_done and
-                        self.episode_idx + self.opt.get("batchsize", 1) >= self.num_episodes()):
+                        self.episode_idx + self.opt.get("batchsize", 1) >= sum_num):
                     epoch_done = True
                 else:
                     epoch_done = False
@@ -850,6 +851,25 @@ class DefaultTeacher(FbDialogTeacher):
                         p_line.append(str(getattr(self, selections)[t][idx]))
                     f.write('\t'.join(p_line))
                     f.write('\n')
+
+    def num_examples(self):
+        try:
+            total_num_examples = 0
+            for task in self.tasks:
+                total_num_examples += int(task.num_examples())
+            return total_num_examples
+        except AttributeError:
+            return super().num_examples()
+
+    def num_episodes(self):
+        try:
+            total_num_examples = 0
+            for task in self.tasks:
+                total_num_examples += int(task.num_episodes())
+            return total_num_examples
+        except AttributeError:
+            return super().num_episodes()
+
 
 
 class PersonachatH3Teacher(DefaultTeacher):
