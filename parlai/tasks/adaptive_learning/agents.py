@@ -400,7 +400,7 @@ class DefaultTeacher(FbDialogTeacher):
             self.reset()
         # print('act task_idx: %d'%(task_idx))
         # get next example, action is episode_done dict if already out of exs
-        action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
+        action, self.epochDone, sampled_episode_idx = self.next_example(observation=observation, task_idx=task_idx)
         action['id'] = self.getID()
 
         # remember correct answer if available
@@ -414,7 +414,7 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.opt.get('hide_labels', False):
                 action['eval_labels'] = labels
 
-        return action
+        return action, sampled_episode_idx
 
     def _cry_for_missing_in_obs(self, something):
         raise RuntimeError(
@@ -533,11 +533,13 @@ class DefaultTeacher(FbDialogTeacher):
             observations = [None] * self.bsz
         bsz = len(observations)
 
-        batch = []
+        batch, episode_batch = [], []
         # Sample from multiple tasks using the policy net
         for idx in range(bsz):
-            batch.append(self.act(observations[idx], task_idx=task_idx))
-        return batch
+            action, sampled_episode_index = self.act(observations[idx], task_idx=task_idx)
+            batch.append(action)
+            episode_batch.append(sampled_episode_index)
+        return batch, episode_batch
 
     def batch_act(self, observations):
         """
@@ -547,9 +549,9 @@ class DefaultTeacher(FbDialogTeacher):
             # reset if haven't yet
             self.reset()
         if self.opt['datatype'] == 'train':
-            batch = self.__load_training_batch(observations)
+            batch, episode_batch = self.__load_training_batch(observations)
         else:
-            batch = self.__load_batch(observations)
+            batch, episode_batch = self.__load_batch(observations)
 
         # pad batch
         if len(batch) < self.bsz:
@@ -585,13 +587,13 @@ class DefaultTeacher(FbDialogTeacher):
             action, epoch_done = self.tasks[task_idx].get()
         else:
             if self.episode_done:
-                self.episode_idx = self.next_episode_idx()
+                self.episode_idx = self.next_episode_idx(task_idx)
                 self.entry_idx = 0
             else:
                 self.entry_idx += 1
 
             if self.episode_idx >= sum_num:
-                return {'episode_done': True}, True
+                return {'episode_done': True}, True, self.episode_idx
             threshold, stop_step = -1, -1
             if observation is None or self.opt['datatype'] != 'train':
                 # The first step of the training or validation mode
@@ -651,7 +653,7 @@ class DefaultTeacher(FbDialogTeacher):
 
             action = ex
 
-        return action, epoch_done
+        return action, epoch_done, sampled_episode_idx
 
     def get(self, episode_idx, entry_idx=0, task_idx=0):
         return self.tasks[task_idx].get(episode_idx, entry_idx)[0]
