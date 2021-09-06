@@ -585,7 +585,7 @@ class DefaultTeacher(FbDialogTeacher):
             action, epoch_done = self.tasks[task_idx].get()
         else:
             if self.episode_done:
-                self.episode_idx = self.next_episode_idx()
+                self.episode_idx = self.next_episode_idx(task_idx=task_idx)
                 self.entry_idx = 0
             else:
                 self.entry_idx += 1

@@ -234,7 +234,7 @@ class FixedDialogTeacher(Teacher):
 
         return shared
 
-    def next_episode_idx(self, num_eps=None, loop=None):
+    def next_episode_idx(self, num_eps=None, loop=None, task_idx=None):
         """
         Returns the next episode index.
 
@@ -244,7 +244,7 @@ class FixedDialogTeacher(Teacher):
             default None loops during training but not evaluation.
         """
         if num_eps is None:
-            num_eps = self.num_episodes()
+            num_eps = len(self.tasks[task_idx].data)  # self.num_episodes()
         if loop is None:
             loop = self.training
         if self.random:
