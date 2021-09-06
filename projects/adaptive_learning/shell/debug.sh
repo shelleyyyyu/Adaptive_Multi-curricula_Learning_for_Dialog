@@ -14,11 +14,11 @@ declare -p tasks=(
 )
 
 declare -p subtasks_list=(
-  ["combine_v6"]="kmeans_v6:0:999"
+  ["combine_v6"]="kmeans_keyword_tfidf_C_2_5:0:4"
 )
 
 declare -p bszs=(
-  ["seq2seq"]=16 #256
+  ["seq2seq"]=256 #256
 )
 
 declare -p lrs=(
