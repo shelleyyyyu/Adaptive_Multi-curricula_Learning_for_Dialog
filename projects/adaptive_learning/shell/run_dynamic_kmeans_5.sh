@@ -38,7 +38,7 @@ declare -A subtasks_list=(
   ["loss_of_hred"]="loss_of_hred"
   ["loss_of_dialogwae"]="loss_of_dialogwae"
   #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
-  ["combine_kmeans_5"]="kmeans_5:0:99"
+  ["combine_kmeans_5"]="kmeans_5:0:4"
   ["combine_kmeans_100"]="kmeans_100:0:99"
   ["combine_kmeans_1000"]="kmeans_1000:0:999"
 
