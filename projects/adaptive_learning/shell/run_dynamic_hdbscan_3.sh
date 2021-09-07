@@ -60,10 +60,10 @@ declare -A subtasks_list=(
   ["combine_kmeans_5"]="kmeans_5:0:4"
   ["combine_kmeans_100"]="kmeans_100:0:99"
   ["combine_kmeans_1000"]="kmeans_1000:0:999"
-  ["combine_hdbscan_2"]="hdbscan_2_1416_B:0:1414"
-  ["combine_hdbscan_3"]="hdbscan_3_737_B:0:735"
-  ["combine_hdbscan_4"]="hdbscan_4_530_B:0:528"
-  ["combine_hdbscan_5"]="hdbscan_5_360_B:0:358"
+  ["combine_hdbscan_2"]="hbscan_2_1416_B:0:1414"
+  ["combine_hdbscan_3"]="hbscan_3_737_B:0:735"
+  ["combine_hdbscan_4"]="hbscan_4_530_B:0:528"
+  ["combine_hdbscan_5"]="hbscan_5_360_B:0:358"
 )
 
 declare -A bszs=(
