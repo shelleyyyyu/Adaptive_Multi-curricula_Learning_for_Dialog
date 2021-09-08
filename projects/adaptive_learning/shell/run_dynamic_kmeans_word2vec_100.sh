@@ -57,7 +57,7 @@ declare -A subtasks_list=(
   ["combine_v17"]="kmeans_keyword_tfidf_D_1_5:0:4"
   ["combine_v18"]="kmeans_keyword_tfidf_D_2_5:0:4"
   ["combine_v19"]="kmeans_keyword_tfidf_D_3_5:0:4"
-  ["combine_kmeans_w2v_100"]="kmeans_word2vec_100:0:99"
+  [""]="kmeans_word2vec_100:0:99"
   ["combine_kmeans_w2v_1000"]="kmeans_word2vec_1000:0:999"
   ["combine_hdbscan_w2v_2"]="hbscan_word2vec_2_1427_B:0:1425"
   ["combine_hdbscan_w2v_3"]="hbscan_word2vec_3_769_B:0:767"
@@ -142,7 +142,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_dynamic_hdbscan/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dynamic_kmeans/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
