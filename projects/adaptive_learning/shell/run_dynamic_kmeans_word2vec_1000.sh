@@ -188,4 +188,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=1; train_model seq2seq personachat_h3_dynamic_kmeans combine_kmeans_w2v_1000 11000 -1 0.2 50
+export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_kmeans combine_kmeans_w2v_1000 11000 -1 0.2 30
