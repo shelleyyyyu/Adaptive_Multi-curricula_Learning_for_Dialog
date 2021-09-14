@@ -14,7 +14,7 @@ declare -p tasks=(
 )
 
 declare -p subtasks_list=(
-  ["combine_v6"]="kmeans_v6:0:999"
+  ["combine_v6"]="kmeans_5:0:4"
 )
 
 declare -p bszs=(
