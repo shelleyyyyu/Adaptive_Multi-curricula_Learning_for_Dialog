@@ -8,6 +8,15 @@ import torch.nn as nn
 
 class AdaSeq2seqAgent(Seq2seqAgent):
 
+    def __init__(self, opt, shared=None):
+        """Set up model."""
+        super().__init__(opt, shared)
+        self.prev_mean_input_emb = None
+        self.margin = nn.Parameter(torch.Tensor([0.5]))
+        self.margin.requires_grad = False
+        self.margin_rate = 0.1
+        self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+
     def build_criterion(self):
         # set up criteria
         if self.opt.get('numsoftmax', 1) > 1:
@@ -126,3 +135,63 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 self.replies['batch_reply'] = batch_reply
                 self._save_history(observations, batch_reply)  # save model predictions
                 return batch_reply
+
+    def _model_input(self, batch):
+        """
+        Creates the input (x) value for the model. Must return a tuple.
+        This will be passed directly into the model via *args, i.e.,
+
+        >>> model(*_model_input(batch))
+
+        This is intentionally overridable so that richer models can pass the
+        additional inputs.
+        """
+        return (batch.text_vec, )
+
+    def compute_loss(self, batch, return_output=False):
+        """
+        Computes and returns the loss for the given batch. Easily overridable for
+        customized loss functions.
+
+        If return_output is True, the full output from the call to self.model()
+        is also returned, via a (loss, model_output) pair.
+        """
+        if batch.label_vec is None:
+            raise ValueError('Cannot compute loss without a label.')
+        model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
+        # print(len(model_output))
+        scores, preds, encoder_states, mean_input_embed = model_output
+        # print(scores[0])
+        # print(preds[0])
+        # print(len(mean_input_embedding), len(mean_input_embedding[0]))
+        score_view = scores.view(-1, scores.size(-1))
+        generation_loss = self.criterion(score_view, batch.label_vec.view(-1))
+        if self.prev_mean_input_emb is not None:
+            # Use mean_input_embed and self.prev_mean_input_emb calculate distance
+            cos_sim_score = torch.mean(self.cos_sim(mean_input_embed, mean_input_embed))
+            # print(cos_sim_score)
+            # print(-self.margin)
+            margin_loss = torch.max(cos_sim_score, -self.margin) + self.margin
+            loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
+            # print("margin_loss: %.4f" %margin_loss)
+            # print("generation_loss: %.4f" % generation_loss)
+            # print("loss: %.4f" % loss)
+            # print('='*20)
+            # exit()
+        else:
+            loss = generation_loss
+            # print("generation_loss: %.4f" % generation_loss)
+            # print('='*20)
+        self.prev_mean_input_emb = mean_input_embed
+        # save loss to metrics
+        notnull = batch.label_vec.ne(self.NULL_IDX)
+        target_tokens = notnull.long().sum().item()
+        correct = ((batch.label_vec == preds) * notnull).sum().item()
+        self.metrics['correct_tokens'] += correct
+        self.metrics['nll_loss'] += loss.item()
+        self.metrics['num_tokens'] += target_tokens
+        loss /= target_tokens  # average loss per token
+        if return_output:
+            return (loss, model_output)
+        else:
+            return loss

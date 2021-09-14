@@ -218,9 +218,10 @@ class RNNEncoder(nn.Module):
 
         # embed input tokens
         xs = self.input_dropout(xs)
+        # xes: Embedding
         xes = self.dropout(self.lt(xs))
         attn_mask = xs.ne(0)
-
+        mean_xes = torch.mean(xes, 2)
         try:
             x_lens = torch.sum(attn_mask.int(), dim=1)
             xes = pack_padded_sequence(xes, x_lens, batch_first=True)
@@ -247,8 +248,7 @@ class RNNEncoder(nn.Module):
                           hidden[1].view(-1, self.dirs, bsz, self.hsz).sum(1))
             else:
                 hidden = hidden.view(-1, self.dirs, bsz, self.hsz).sum(1)
-
-        return encoder_output, _transpose_hidden_state(hidden), attn_mask
+        return encoder_output, _transpose_hidden_state(hidden), attn_mask, mean_xes
 
 
 class RNNDecoder(nn.Module):
@@ -301,7 +301,7 @@ class RNNDecoder(nn.Module):
                 the model's OutputLayer for a final softmax.
             - hidden_state depends on the choice of RNN
         """
-        enc_state, enc_hidden, attn_mask = encoder_output
+        enc_state, enc_hidden, attn_mask, mean_input_embedding = encoder_output
         # in case of multi gpu, we need to transpose back out the hidden state
         attn_params = (enc_state, attn_mask)
 
@@ -347,8 +347,7 @@ class RNNDecoder(nn.Module):
                 o, _ = self.attention(o, new_hidden, attn_params)
                 output.append(o)
             output = torch.cat(output, dim=1).to(xes.device)
-
-        return output, _transpose_hidden_state(new_hidden)
+        return output, _transpose_hidden_state(new_hidden), mean_input_embedding
 
 
 class Identity(nn.Module):
@@ -416,7 +415,7 @@ class OutputLayer(nn.Module):
                 # no need for any transformation here
                 self.o2e = Identity()
 
-    def forward(self, input):
+    def forward(self, input, mean_input_embedding):
         """Compute scores from inputs.
 
         :param input: (bsz x seq_len x num_directions * hiddensize) tensor of
@@ -455,7 +454,7 @@ class OutputLayer(nn.Module):
         if self.padding_idx >= 0:
             scores[:, :, self.padding_idx] = -NEAR_INF
 
-        return scores
+        return scores, mean_input_embedding
 
 
 class AttentionLayer(nn.Module):
