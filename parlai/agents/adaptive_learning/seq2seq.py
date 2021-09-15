@@ -16,7 +16,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.margin.requires_grad = False
         if torch.cuda.is_available():
             self.margin = self.margin.cuda()
-        self.margin_rate = 0.1
+        self.margin_rate = 0.01
         self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
 
     def build_criterion(self):
