@@ -13,6 +13,8 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         super().__init__(opt, shared)
         self.prev_mean_input_emb = None
         self.margin = nn.Parameter(torch.Tensor([0.5]))
+        if torch.cuda.is_available():
+            self.margin = self.margin.cuda()
         self.margin.requires_grad = False
         self.margin_rate = 0.1
         self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
