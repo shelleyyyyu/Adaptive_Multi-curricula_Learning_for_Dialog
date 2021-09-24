@@ -179,13 +179,21 @@ class AdaSeq2seqAgent(Seq2seqAgent):
 
         generation_loss /= target_tokens  # average loss per token
 
+        if self.prev_mean_input_emb is None:
+            print('self.prev_mean_input_emb', None)
+        else:
+            print('self.prev_mean_input_emb', self.prev_mean_input_emb.size())
+
+        if prev_emb is None:
+            print('prev_emb', None)
+        else:
+            print('prev_emb', prev_emb.size())
+
+        print(mean_input_embed.size())
+
         if prev_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
             # print('='*20)
             # Use mean_input_embed and self.prev_mean_input_emb calculate distance
-            print(self.prev_mean_input_emb.size())
-            print(mean_input_embed.size())
-            print(prev_emb.size())
-            print(mean_input_embed.size())
             cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
             # print(cos_sim)
             cos_sim_score = torch.mean(cos_sim).float()
