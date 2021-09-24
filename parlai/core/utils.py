@@ -952,7 +952,7 @@ def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
     #TODO: use config to control if fix length?!
     print('fix_pad_length:', fix_pad_length)
     print(lens)
-    if fix_pad_length:
+    if fix_pad_length is not None:
         t = fix_pad_length
     else:
         t = max(lens) if max_len is None else max_len
