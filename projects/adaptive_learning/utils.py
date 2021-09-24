@@ -59,6 +59,18 @@ def set_teacher_args(parser):
     # logs
     parser.add_argument('--tensorboard_log_teacher', type='bool', default=False)
     parser.add_argument('--run_test_after_validation', type='bool', default=False)
+
+
+    parser.add_argument(
+        '--margin_rate', default=0.01, type=float, help='margin rate'
+    )
+    parser.add_argument(
+        '--margin', default=0.5, type=float, help='margin'
+    )
+    parser.add_argument(
+        '--fix_pad_length', default=None, type=int, help='fix pad length'
+    )
+
     return parser
 
 

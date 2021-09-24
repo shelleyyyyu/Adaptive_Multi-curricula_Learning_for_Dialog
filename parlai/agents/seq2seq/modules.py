@@ -142,6 +142,62 @@ class Seq2seq(TorchGeneratorModel):
                 for x in incremental_state
             )
 
+    def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None,
+                bsz=None, prev_emb=None):
+        """
+        Get output predictions from the model.
+
+        :param xs:
+            input to the encoder
+        :type xs:
+            LongTensor[bsz, seqlen]
+        :param ys:
+            Expected output from the decoder. Used
+            for teacher forcing to calculate loss.
+        :type ys:
+            LongTensor[bsz, outlen]
+        :param prev_enc:
+            if you know you'll pass in the same xs multiple times, you can pass
+            in the encoder output from the last forward pass to skip
+            recalcuating the same encoder output.
+        :param maxlen:
+            max number of tokens to decode. if not set, will use the length of
+            the longest label this model has seen. ignored when ys is not None.
+        :param bsz:
+            if ys is not provided, then you must specify the bsz for greedy
+            decoding.
+
+        :return:
+            (scores, candidate_scores, encoder_states) tuple
+
+            - scores contains the model's predicted token scores.
+              (FloatTensor[bsz, seqlen, num_features])
+            - candidate_scores are the score the model assigned to each candidate.
+              (FloatTensor[bsz, num_cands])
+            - encoder_states are the output of model.encoder. Model specific types.
+              Feed this back in to skip encoding on the next call.
+        """
+        if ys is not None:
+            # TODO: get rid of longest_label
+            # keep track of longest label we've ever seen
+            # we'll never produce longer ones than that during prediction
+            self.longest_label = max(self.longest_label, ys.size(1))
+
+        # use cached encoding if available
+        encoder_states = prev_enc if prev_enc is not None else self.encoder(*xs)
+
+        if ys is not None:
+            # use teacher forcing
+            scores, preds, mean_emb = self.decode_forced(encoder_states, ys)
+        else:
+            scores, preds, mean_emb = self.decode_greedy(
+                encoder_states,
+                bsz,
+                maxlen or self.longest_label
+            )
+
+        return scores, preds, encoder_states, mean_emb, prev_emb
+
 
 class UnknownDropout(nn.Module):
     """With set frequency, replaces tokens with unknown token.

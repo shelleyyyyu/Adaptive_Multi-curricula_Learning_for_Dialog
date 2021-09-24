@@ -66,6 +66,8 @@ function train_model() {
   local validation_every_n_secs=$5
   local validation_every_n_epochs=$6
   local num_epochs=$7
+  local margin=$8
+  local margin_rate=$9
 
   local model=${models[$model_name]}
   if [[ "${attr}" == "original" ]]; then
@@ -128,6 +130,9 @@ function train_model() {
     train_script=train_transformer.py
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
+  train_args=${train_args}" --margin ${margin} --margin_rate ${margin_rate}"
+
+
 
   python ./projects/adaptive_learning/${train_script} ${train_args}
   cd -
@@ -135,4 +140,4 @@ function train_model() {
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
 export CUDA_VISIBLE_DEVICES=-1;
-train_model seq2seq personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50
+train_model seq2seq personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50 0.5 0.05

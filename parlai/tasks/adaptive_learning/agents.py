@@ -499,7 +499,7 @@ class DefaultTeacher(FbDialogTeacher):
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
-                        action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
+                        #action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
                         #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
                         log = '[ {} {}]'.format('Selected Action:', action)
                         print(log)
@@ -518,7 +518,6 @@ class DefaultTeacher(FbDialogTeacher):
                     selection_report['c_{}'.format(t)] = self.subtask_counter[t]
                     self.c_selections[t].append(self.subtask_counter[t])
                 self.writer.add_metrics(setting='Teacher/task_selection', step=train_step, report=selection_report)
-                # print("__load_training_batch selected_task: %d" %(selected_task))
             else:
                 selected_task = random.choice(range(len(self.tasks)))
                 self.subtask_counter[self.subtasks[selected_task]] += 1

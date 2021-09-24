@@ -915,7 +915,7 @@ def set_namedtuple_defaults(namedtuple, default=None):
 
 
 def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
-                  max_len=None, fp16friendly=False):
+                  max_len=None, fp16friendly=False, fix_pad_length=None):
     """
     Create a right-padded matrix from an uneven list of lists.
 
@@ -949,7 +949,11 @@ def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
     # length of each item
     lens = [len(item) for item in items]
     # max in time dimension
-    t = max(lens) if max_len is None else max_len
+    #TODO: use config to control if fix length?!
+    if fix_pad_length:
+        t = fix_pad_length
+    else:
+        t = max(lens) if max_len is None else max_len
 
     # if input tensors are empty, we should expand to nulls
     t = max(t, 1)

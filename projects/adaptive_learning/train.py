@@ -49,6 +49,9 @@ OVERRIDE = {
     "c0": 0.01,
     "p": 2,
     "beam_size": 1,
+    "margin_rate": 0.01,
+    "margin": 0.5,
+    "fix_pad_length":55
 }
 
 if __name__ == '__main__':
@@ -88,6 +91,9 @@ if __name__ == '__main__':
         reward_metric='total_metric',
         reward_metric_mode='max',
         save_after_valid=False,
+        margin_rate=0.01,
+        margin=0.5,
+        fix_pad_length=55
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()
