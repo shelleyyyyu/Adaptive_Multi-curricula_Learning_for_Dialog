@@ -950,6 +950,7 @@ def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
     lens = [len(item) for item in items]
     # max in time dimension
     #TODO: use config to control if fix length?!
+    print('fix_pad_length:', fix_pad_length)
     if fix_pad_length:
         t = fix_pad_length
     else:
