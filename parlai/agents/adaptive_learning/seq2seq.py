@@ -182,6 +182,8 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if prev_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
             # print('='*20)
             # Use mean_input_embed and self.prev_mean_input_emb calculate distance
+            print(self.prev_mean_input_emb.size())
+            print(mean_input_embed.size())
             print(prev_emb.size())
             print(mean_input_embed.size())
             cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
