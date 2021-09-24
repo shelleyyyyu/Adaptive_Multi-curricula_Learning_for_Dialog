@@ -950,13 +950,12 @@ def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
     lens = [len(item) for item in items]
     # max in time dimension
     #TODO: use config to control if fix length?!
-    # print('fix_pad_length:', fix_pad_length)
-    # print(lens)
-    # if fix_pad_length is not None:
-    #     t = fix_pad_length
-    # else:
-    #     t = max(lens) if max_len is None else max_len
-    t = 55
+    if fix_pad_length is not None:
+        t = fix_pad_length
+    else:
+        t = max(lens) if max_len is None else max_len
+    print('t', t)
+    # t = 64
 
     # if input tensors are empty, we should expand to nulls
     t = max(t, 1)
