@@ -1174,7 +1174,7 @@ class TorchAgent(Agent):
         if any('text_vec' in ex for ex in exs):
             _xs = [ex.get('text_vec', self.EMPTY) for ex in exs]
             xs, x_lens = padded_tensor(
-                _xs, self.NULL_IDX, self.use_cuda, fp16friendly=self.opt.get('fp16'), fix_pad_length=self.opt['fix_pad_length']
+                _xs, self.NULL_IDX, self.use_cuda, fp16friendly=self.opt.get('fp16'), fix_pad_length=self.opt.get('fix_pad_length')
             )
             if sort:
                 sort = False  # now we won't sort on labels
