@@ -38,9 +38,9 @@ OVERRIDE = {
     "num_epochs": 20,
     "display_examples": False,
     "history_size": -1,
-    "text_truncate": 128,
-    "label_truncate": 128,
-    "truncate": 128,
+    "text_truncate": 64,
+    "label_truncate": 64,
+    "truncate": 64,
     "gpu": 0,
     "batch_sort_field": 'label',
     "pytorch_teacher_batch_sort": False,
@@ -51,7 +51,7 @@ OVERRIDE = {
     "beam_size": 1,
     "margin_rate": 0.01,
     "margin": 0.5,
-    "fix_pad_length":55
+    "fix_pad_length":64
 }
 
 if __name__ == '__main__':
