@@ -93,7 +93,7 @@ if __name__ == '__main__':
         save_after_valid=False,
         margin_rate=0.01,
         margin=0.5,
-        fix_pad_length=55
+        fix_pad_length=64
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()
