@@ -19,7 +19,6 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if torch.cuda.is_available():
             self.margin = self.margin.cuda()
             self.cos_sim = self.cos_sim.cuda()
-            self.prev_mean_input_emb = self.prev_mean_input_emb.cuda()
 
 
     def build_criterion(self):
