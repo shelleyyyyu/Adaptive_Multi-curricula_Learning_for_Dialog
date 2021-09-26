@@ -47,13 +47,12 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.zero_grad()
 
         try:
-            loss, model_output = self.compute_loss(batch, return_output=True)
+            loss, margin_loss, model_output = self.compute_loss(batch, return_output=True)
             batch_loss = compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX)
-            # print('loss', loss)
             self.metrics['loss'] += loss.item()
             self.backward(loss)
             self.update_params()
-            return loss, model_output, batch_loss
+            return loss, model_output, batch_loss, margin_loss
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):
@@ -93,13 +92,14 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if is_training:
             train_return = self.train_step(batch)
             if train_return is not None:
-                _, model_output, batch_loss = train_return
+                _, model_output, batch_loss, margin_loss = train_return
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
             else:
                 batch_loss = None
                 scores = None
+                margin_loss = None
 
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
@@ -111,6 +111,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 reply['train_step'] = self._number_training_updates
                 reply['train_report'] = train_report
                 reply['loss_desc'] = loss_desc
+                reply['margin_loss'] = margin_loss
                 reply['prob_desc'] = prob_desc
             return batch_reply
         else:
@@ -199,19 +200,9 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
             margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
-            # print(loss)
-            # print('='*20)
-            print('generation_loss: %.4f; margin_loss: %.4f'%(generation_loss, margin_loss))
-            print('-' * 20)
-
         else:
             loss = generation_loss
-            # print('generation_loss: %.4f;'%(generation_loss))
-            # print('-' * 20)
-
-            # print('-' * 20)
-            # print(loss)
-            # print('-' * 20)
+            margin_loss = -1
 
         if len(batch.text_vec) == self.opt['batchsize']:
             self.prev_mean_input_emb = mean_input_embed
@@ -221,6 +212,6 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.metrics['num_tokens'] += target_tokens
 
         if return_output:
-            return (loss, model_output)
+            return (loss, margin_loss, model_output)
         else:
-            return loss
+            return (loss, margin_loss)

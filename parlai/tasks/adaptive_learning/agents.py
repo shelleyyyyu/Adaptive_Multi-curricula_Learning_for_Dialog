@@ -131,7 +131,7 @@ class DefaultTeacher(FbDialogTeacher):
                 self.c_selections = shared['c_selections']
 
         # build the policy net, criterion and optimizer here
-        self.state_dim = 32 + len(self.tasks)  # hand-craft features
+        self.state_dim = 33 + len(self.tasks)  # hand-craft features
         self.action_dim = len(self.tasks)
 
         if not shared:
@@ -430,6 +430,7 @@ class DefaultTeacher(FbDialogTeacher):
         train_step = min(train_step / self.T, 1)
         train_report = observations[0]['train_report']
         nll_loss = train_report.get('nll_loss', 0) / 10  # scala
+        margin_loss = train_report.get('margin_loss', 0)  # scala
         loss_desc = observations[0]['loss_desc']
         loss_desc = F.normalize(loss_desc, p=2, dim=-1)
 
@@ -470,7 +471,7 @@ class DefaultTeacher(FbDialogTeacher):
         word_entropy_uni = prev_valid_report.get('word_entropy_uni', 0) / 100
         word_entropy_bi = prev_valid_report.get('word_entropy_bi', 0) / 100
         word_entropy_tri = prev_valid_report.get('word_entropy_tri', 0) / 100
-        states = torch.FloatTensor([train_step, nll_loss, bleu, valid_nll_loss,
+        states = torch.FloatTensor([train_step, nll_loss, margin_loss, bleu, valid_nll_loss,
                                     dist_1_ratio, dist_2_ratio, dist_3_ratio,
                                     embed_avg, embed_greedy, embed_extrema, embed_coh,
                                     intra_dist_1, intra_dist_2, intra_dist_3, response_length,

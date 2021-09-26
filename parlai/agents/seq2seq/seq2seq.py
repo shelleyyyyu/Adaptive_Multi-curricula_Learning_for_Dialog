@@ -272,7 +272,7 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
 
         if batch.label_vec is not None:
             # calculate loss on targets with teacher forcing
-            loss = self.compute_loss(batch)  # noqa: F841  we need the side effects
+            loss, margin_loss = self.compute_loss(batch)  # noqa: F841  we need the side effects
             self.metrics['loss'] += loss.item()
 
         preds = None
