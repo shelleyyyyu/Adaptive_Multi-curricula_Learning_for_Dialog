@@ -1,5 +1,5 @@
 import torch
-
+import torch.nn.functional as F
 from parlai.agents.seq2seq.seq2seq import Seq2seqAgent
 from .criterions import LabelSmoothing, CrossEntropyLabelSmoothing
 from .helper import build_loss_desc, build_prob_desc, compute_batch_loss
@@ -15,7 +15,9 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.margin = nn.Parameter(torch.Tensor([opt['margin']]))
         self.margin.requires_grad = False
         self.margin_rate = opt['margin_rate']
-        self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+        #self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
+
+
         if torch.cuda.is_available():
             self.margin = self.margin.cuda()
             self.cos_sim = self.cos_sim.cuda()
@@ -194,18 +196,21 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if prev_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
             # print('='*20)
             # Use mean_input_embed and self.prev_mean_input_emb calculate distance
-            cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
-            # print(cos_sim)
-            cos_sim_score = torch.mean(cos_sim).float()
-            # print(cos_sim_score)
-            margin_loss = torch.max(cos_sim_score, -self.margin) + self.margin
-            # print(margin_loss)
+            # cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
+            # cos_sim_score = torch.mean(cos_sim).float()
+            # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
+            margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
             # print(loss)
             # print('='*20)
+            print('generation_loss: %.4f; margin_loss: %.4f'%(generation_loss, margin_loss))
+            print('-' * 20)
 
         else:
             loss = generation_loss
+            print('generation_loss: %.4f;'%(generation_loss))
+            print('-' * 20)
+
             # print('-' * 20)
             # print(loss)
             # print('-' * 20)
