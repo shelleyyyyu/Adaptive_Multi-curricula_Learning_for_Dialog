@@ -434,7 +434,7 @@ class TorchGeneratorAgent(TorchAgent):
         """Pre-initialize CUDA buffer by doing fake forward pass."""
         if self.use_cuda and (force or not hasattr(self, 'buffer_initialized')):
             try:
-                loss = self.compute_loss(self._dummy_batch(batchsize, maxlen))
+                loss, margin_loss = self.compute_loss(self._dummy_batch(batchsize, maxlen))
                 self.backward(loss)
                 self.buffer_initialized = True
             except RuntimeError as e:
