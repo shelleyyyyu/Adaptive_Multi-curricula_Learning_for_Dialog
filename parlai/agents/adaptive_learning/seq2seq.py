@@ -179,7 +179,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         target_tokens = notnull.long().sum().item()
         correct = ((batch.label_vec == preds) * notnull).sum().item()
 
-        loss = generation_loss /= target_tokens  # average loss per token
+        loss = generation_loss = target_tokens  # average loss per token
 
         # if self.prev_mean_input_emb is None:
         #     print('self.prev_mean_input_emb', None)
