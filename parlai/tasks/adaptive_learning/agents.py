@@ -480,7 +480,7 @@ class DefaultTeacher(FbDialogTeacher):
         if self.use_cuda:
             states = states.cuda()
         states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
-        return states
+        return states, margin_loss
 
     def __uniform_weights(self):
         w = 1 / len(self.tasks)
@@ -493,16 +493,18 @@ class DefaultTeacher(FbDialogTeacher):
         if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
             if not self.random_policy:
                 with torch.no_grad():
-                    current_states = self._build_states(observations)
+                    current_states, margin_loss = self._build_states(observations)
                 action_probs = self.policy(current_states)
                 sample_from = Categorical(action_probs[0])
-                action = sample_from.sample()
+                # action = sample_from.sample()
+                action = torch.argmax(action_probs)
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
                         #action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
                         #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
-                        log = '[ {} {}]'.format('Selected Action:', action)
+                        #log = '[ {} {}; {} {}]'.format('Selected Action:', action, 'Margin Loss:', margin_loss)
+                        log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
                         print(log)
                         self.action_log_time.reset()
                 train_step = observations[0]['train_step']
