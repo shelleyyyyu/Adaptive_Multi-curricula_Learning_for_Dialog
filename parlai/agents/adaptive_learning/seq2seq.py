@@ -206,8 +206,8 @@ class AdaSeq2seqAgent(Seq2seqAgent):
 
         else:
             loss = generation_loss
-            print('generation_loss: %.4f;'%(generation_loss))
-            print('-' * 20)
+            # print('generation_loss: %.4f;'%(generation_loss))
+            # print('-' * 20)
 
             # print('-' * 20)
             # print(loss)
