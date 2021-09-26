@@ -430,7 +430,7 @@ class DefaultTeacher(FbDialogTeacher):
         train_step = min(train_step / self.T, 1)
         train_report = observations[0]['train_report']
         nll_loss = train_report.get('nll_loss', 0) / 10  # scala
-        margin_loss = train_report.get('margin_loss', 0)  # scala
+        margin_loss = observations[0].get('margin_loss', 0)  # scala
         loss_desc = observations[0]['loss_desc']
         loss_desc = F.normalize(loss_desc, p=2, dim=-1)
 

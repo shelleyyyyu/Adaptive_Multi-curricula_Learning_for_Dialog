@@ -93,6 +93,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             train_return = self.train_step(batch)
             if train_return is not None:
                 _, model_output, batch_loss, margin_loss = train_return
+
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
@@ -199,8 +200,6 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # cos_sim_score = torch.mean(cos_sim).float()
             # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
             margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
-            print(margin_loss)
-            print('-'*10)
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             loss = generation_loss
