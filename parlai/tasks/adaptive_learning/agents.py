@@ -496,8 +496,8 @@ class DefaultTeacher(FbDialogTeacher):
                     current_states, margin_loss = self._build_states(observations)
                 action_probs = self.policy(current_states)
                 sample_from = Categorical(action_probs[0])
-                # action = sample_from.sample()
-                action = torch.argmax(action_probs)
+                action = sample_from.sample()
+                # action = torch.argmax(action_probs)
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
