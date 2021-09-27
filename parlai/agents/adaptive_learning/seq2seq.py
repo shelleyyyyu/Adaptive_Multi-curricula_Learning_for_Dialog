@@ -200,7 +200,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # cos_sim_score = torch.mean(cos_sim).float()
             # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
             margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
-            # loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
+            loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
             margin_loss = -1
