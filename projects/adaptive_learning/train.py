@@ -93,7 +93,14 @@ if __name__ == '__main__':
         save_after_valid=False,
         margin_rate=0.01,
         margin=0.5,
-        fix_pad_length=64
+        fix_pad_length=64,
+        policy_n_heads=8,
+        policy_n_layers=1,
+        policy_ffn_size=128,
+        policy_embedding_size=64,
+        policy_attention_dropout=0.1,
+        policy_relu_dropout=0.1,
+        policy_activation='relu',
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()

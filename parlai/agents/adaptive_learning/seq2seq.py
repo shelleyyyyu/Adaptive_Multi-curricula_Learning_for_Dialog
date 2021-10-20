@@ -15,8 +15,6 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.margin = nn.Parameter(torch.Tensor([opt['margin']]))
         self.margin.requires_grad = False
         self.margin_rate = opt['margin_rate']
-        #self.cos_sim = nn.CosineSimilarity(dim=1, eps=1e-6)
-
 
         if torch.cuda.is_available():
             self.margin = self.margin.cuda()
@@ -47,12 +45,12 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         self.zero_grad()
 
         try:
-            loss, margin_loss, model_output = self.compute_loss(batch, return_output=True)
+            loss, margin_loss, mean_input_embed, model_output = self.compute_loss(batch, return_output=True)
             batch_loss = compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX)
             self.metrics['loss'] += loss.item()
             self.backward(loss)
             self.update_params()
-            return loss, model_output, batch_loss, margin_loss
+            return loss, model_output, batch_loss, margin_loss, mean_input_embed
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):
@@ -92,8 +90,9 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if is_training:
             train_return = self.train_step(batch)
             if train_return is not None:
-                _, model_output, batch_loss, margin_loss = train_return
-
+                #            return loss, model_output, batch_loss, margin_loss, mean_input_embed
+                _, model_output, batch_loss, margin_loss, mean_input_embed = train_return
+                # print('batch_act mean_input_embed', mean_input_embed)
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
@@ -114,6 +113,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 reply['loss_desc'] = loss_desc
                 reply['margin_loss'] = margin_loss
                 reply['prob_desc'] = prob_desc
+                reply['mean_input_embed'] = mean_input_embed
             return batch_reply
         else:
             with torch.no_grad():
@@ -193,14 +193,17 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # loss = generation_loss
             margin_loss = -1
 
+        # print('compute_loss prev_emb', prev_emb)
+        # print('compute_loss mean_input_embed', mean_input_embed)
+
         if len(batch.text_vec) == self.opt['batchsize']:
-            self.prev_mean_input_emb = mean_input_embed
+             self.prev_mean_input_emb = mean_input_embed
         # save loss to metrics
         self.metrics['correct_tokens'] += correct
         self.metrics['nll_loss'] += loss.item()
         self.metrics['num_tokens'] += target_tokens
 
         if return_output:
-            return (loss, margin_loss, model_output)
+            return (loss, margin_loss, mean_input_embed, model_output)
         else:
             return (loss, margin_loss)

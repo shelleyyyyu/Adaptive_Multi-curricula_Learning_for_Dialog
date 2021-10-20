@@ -25,7 +25,7 @@ from torch import optim
 import scipy.stats as ss
 import torch.nn.functional as F
 from collections import OrderedDict
-from .modules import PolicyNet, CriticNet
+from .modules import PolicyNet_Transformer, CriticNet, PolicyNet_MLP
 from torch.distributions import Categorical
 from parlai.core.logs import TensorboardLogger
 from parlai.core.utils import Timer, round_sigfigs
@@ -62,6 +62,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.random_policy = opt.get('random_policy', False)
         self.count_sample = opt.get('count_sample', False)
         self.anti = opt.get('anti', False)
+        self.history_mean_embed = []
 
         if self.random_policy:
             random.seed(17)
@@ -135,7 +136,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.action_dim = len(self.tasks)
 
         if not shared:
-            self.policy = PolicyNet(self.state_dim, self.action_dim)
+            self.policy = PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)# PolicyNet_MLP(self.state_dim, self.action_dim)
             self.critic = CriticNet(self.state_dim, self.action_dim)
 
             init_teacher = get_init_teacher(opt, shared)
@@ -436,6 +437,9 @@ class DefaultTeacher(FbDialogTeacher):
 
         prob_desc = observations[0]['prob_desc']
         prob_desc = F.normalize(prob_desc, p=2, dim=-1)
+        mean_input_embed = observations[0]['mean_input_embed']
+
+        # print('_build_states mean_input_embed', mean_input_embed)
 
         if hasattr(self, 'subtask_counter'):
             subtask_progress = self.subtask_counter.values()
@@ -480,7 +484,7 @@ class DefaultTeacher(FbDialogTeacher):
         if self.use_cuda:
             states = states.cuda()
         states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
-        return states, margin_loss
+        return states, margin_loss, mean_input_embed
 
     def __uniform_weights(self):
         w = 1 / len(self.tasks)
@@ -493,8 +497,12 @@ class DefaultTeacher(FbDialogTeacher):
         if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
             if not self.random_policy:
                 with torch.no_grad():
-                    current_states, margin_loss = self._build_states(observations)
-                action_probs = self.policy(current_states)
+                    current_states, margin_loss, mean_input_embed = self._build_states(observations)
+                # print('__load_training_batch mean_input_embed', mean_input_embed)
+                # print()
+                self.history_mean_embed.append(mean_input_embed.detach())
+                history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
+                action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
                 # action = torch.argmax(action_probs)
@@ -726,7 +734,7 @@ class DefaultTeacher(FbDialogTeacher):
                 self.policy.train()
                 self.optimizer.zero_grad()
                 policy_loss = policy_loss + self.opt.get('reg_action', 0.001) * (-action_ent)
-                policy_loss.backward()
+                policy_loss.backward(retain_graph=True)
                 self.update_params()
 
                 # lr_scheduler step on teacher loss
