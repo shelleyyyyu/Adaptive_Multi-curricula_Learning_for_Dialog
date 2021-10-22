@@ -498,7 +498,7 @@ class DefaultTeacher(FbDialogTeacher):
                 cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
                 self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
                 history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
-                print('history_mean_emb_tensor', history_mean_emb_tensor.size())
+                # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
 
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
