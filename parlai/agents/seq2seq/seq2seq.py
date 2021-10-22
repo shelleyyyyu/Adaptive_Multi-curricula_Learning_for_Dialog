@@ -198,13 +198,14 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
                 opt['embedding_type'] != 'random'):
             print('skipping preinitialization of embeddings for bpe')
         elif not states and opt['embedding_type'] != 'random':
+            # COME HERE !!
             # `not states`: only set up embeddings if not loading model
-            self._copy_embeddings(self.model.decoder.lt.weight,
-                                  opt['embedding_type'])
+            self._copy_embeddings(self.model.decoder.lt.weight, opt['embedding_type'])
             if opt['lookuptable'] in ['unique', 'dec_out']:
                 # also set encoder lt, since it's not shared
                 self._copy_embeddings(self.model.encoder.lt.weight,
                                       opt['embedding_type'], log=False)
+            self._copy_embeddings(self.model.pretrain_embedding.weight, opt['embedding_type'], log=False)
 
         if states:
             # set loaded states if applicable
@@ -214,11 +215,13 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
 
         if self.use_cuda:
             self.model.cuda()
+        self.model.pretrain_embedding.weight.requires_grad = False
 
         if opt['embedding_type'].endswith('fixed'):
             print('Seq2seq: fixing embedding weights.')
             self.model.decoder.lt.weight.requires_grad = False
             self.model.encoder.lt.weight.requires_grad = False
+
             if opt['lookuptable'] in ['dec_out', 'all']:
                 self.model.decoder.e2s.weight.requires_grad = False
 

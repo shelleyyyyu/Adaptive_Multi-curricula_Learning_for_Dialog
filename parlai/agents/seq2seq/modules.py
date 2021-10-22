@@ -81,8 +81,7 @@ class Seq2seq(TorchGeneratorModel):
             attn_time=attention_time,
             bidir_input=bidirectional)
 
-        shared_lt = (self.decoder.lt  # share embeddings between rnns
-                     if lookuptable in ('enc_dec', 'all') else None)
+        shared_lt = (self.decoder.lt if lookuptable in ('enc_dec', 'all') else None)
         shared_rnn = self.decoder.rnn if decoder == 'shared' else None
         self.encoder = RNNEncoder(
             num_features, embeddingsize, hiddensize,
@@ -98,6 +97,7 @@ class Seq2seq(TorchGeneratorModel):
             num_features, embeddingsize, hiddensize, dropout=dropout,
             numsoftmax=numsoftmax, shared_weight=shared_weight,
             padding_idx=padding_idx)
+        self.pretrain_embedding = nn.Embedding(num_features, embeddingsize, padding_idx=padding_idx, sparse=False)
 
     def reorder_encoder_states(self, encoder_states, indices):
         """Reorder encoder states according to a new set of indices."""
@@ -143,7 +143,7 @@ class Seq2seq(TorchGeneratorModel):
             )
 
     def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None,
-                bsz=None, prev_emb=None):
+                bsz=None):
         """
         Get output predictions from the model.
 
@@ -188,15 +188,15 @@ class Seq2seq(TorchGeneratorModel):
 
         if ys is not None:
             # use teacher forcing
-            scores, preds, mean_emb = self.decode_forced(encoder_states, ys)
+            scores, preds = self.decode_forced(encoder_states, ys)
         else:
-            scores, preds, mean_emb = self.decode_greedy(
+            scores, preds = self.decode_greedy(
                 encoder_states,
                 bsz,
                 maxlen or self.longest_label
             )
 
-        return scores, preds, encoder_states, mean_emb, prev_emb
+        return scores, preds, encoder_states
 
 
 class UnknownDropout(nn.Module):
@@ -304,7 +304,7 @@ class RNNEncoder(nn.Module):
                           hidden[1].view(-1, self.dirs, bsz, self.hsz).sum(1))
             else:
                 hidden = hidden.view(-1, self.dirs, bsz, self.hsz).sum(1)
-        return encoder_output, _transpose_hidden_state(hidden), attn_mask, mean_xes
+        return encoder_output, _transpose_hidden_state(hidden), attn_mask
 
 
 class RNNDecoder(nn.Module):
@@ -357,7 +357,7 @@ class RNNDecoder(nn.Module):
                 the model's OutputLayer for a final softmax.
             - hidden_state depends on the choice of RNN
         """
-        enc_state, enc_hidden, attn_mask, mean_input_embedding = encoder_output
+        enc_state, enc_hidden, attn_mask = encoder_output
         # in case of multi gpu, we need to transpose back out the hidden state
         attn_params = (enc_state, attn_mask)
 
@@ -403,7 +403,7 @@ class RNNDecoder(nn.Module):
                 o, _ = self.attention(o, new_hidden, attn_params)
                 output.append(o)
             output = torch.cat(output, dim=1).to(xes.device)
-        return output, _transpose_hidden_state(new_hidden), mean_input_embedding
+        return output, _transpose_hidden_state(new_hidden)
 
 
 class Identity(nn.Module):
@@ -471,7 +471,7 @@ class OutputLayer(nn.Module):
                 # no need for any transformation here
                 self.o2e = Identity()
 
-    def forward(self, input, mean_input_embedding):
+    def forward(self, input):
         """Compute scores from inputs.
 
         :param input: (bsz x seq_len x num_directions * hiddensize) tensor of
@@ -510,7 +510,7 @@ class OutputLayer(nn.Module):
         if self.padding_idx >= 0:
             scores[:, :, self.padding_idx] = -NEAR_INF
 
-        return scores, mean_input_embedding
+        return scores
 
 
 class AttentionLayer(nn.Module):

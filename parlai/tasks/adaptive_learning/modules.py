@@ -256,24 +256,26 @@ class PolicyNet_Transformer(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.history_encoder = _build_encoder(opt, reduction_type=None)
-        self.history_ffn = FeedForward(opt['fix_pad_length'], action_dim, hidden_sizes=(128, 64))
+        self.history_ffn = FeedForward(300, action_dim, hidden_sizes=(128, 64))
         self.policy = FeedForward(state_dim, action_dim, hidden_sizes=(128, 64, 32))
         self.last_ffn = FeedForward(action_dim*2, action_dim, hidden_sizes=(128, 64))
 
     def forward(self, state, history_mean_emb):
-        # print('PolicyNet_Transformer history_mean_emb', history_mean_emb)
+        # print('PolicyNet_Transformer history_mean_emb', history_mean_emb.size()) [*, 64, 300]
         pad_history_mean_emb = F.pad(input=history_mean_emb, pad=(0, 0, 0, 0, 0, 10-history_mean_emb.size()[0]), mode='constant', value=0) #(10,64,300)
-        # print('PolicyNet_Transformer pad_history_mean_emb', pad_history_mean_emb)
+        # print('PolicyNet_Transformer pad_history_mean_emb', pad_history_mean_emb.size())
         encoder_states = self.history_encoder(pad_history_mean_emb)
-        # print('encoder_states', encoder_states.size()) # (10, 16, 64)
+        # print('encoder_states', encoder_states.size()) # (10, 64, 300)
         encoder_states = torch.unsqueeze(torch.mean(torch.sum(encoder_states, 0), 0), 0)
-        # print('encoder_states', encoder_states.size()) # (1,64)
+        # print('encoder_states', encoder_states.size()) # (1,300)
         encoder_states = self.history_ffn(encoder_states)
         # print(encoder_states.size()) # (1,5)
         state_score = self.policy(state)
         # print('state_score', state_score.size()) # (1,5)
-        states = self.last_ffn(torch.cat((encoder_states, state_score), dim=1))
-        # print('states', states.size()) # (1,10)->(1,5)
+        states = torch.cat((encoder_states, state_score), dim=1)
+        # print('states', states.size()) # (1,10)
+        states = self.last_ffn(states)
+        # print('states', states.size()) # (1,5)
         action_prob = F.softmax(states, dim=-1)
         # print('action_prob', action_prob.size()) # (1,5)
         return action_prob

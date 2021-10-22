@@ -11,7 +11,8 @@ class AdaSeq2seqAgent(Seq2seqAgent):
     def __init__(self, opt, shared=None):
         """Set up model."""
         super().__init__(opt, shared)
-        self.prev_mean_input_emb = None
+        # self.prev_mean_input_emb = None
+        self.prev_batch_input = None
         self.margin = nn.Parameter(torch.Tensor([opt['margin']]))
         self.margin.requires_grad = False
         self.margin_rate = opt['margin_rate']
@@ -42,15 +43,16 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         # helps with memory usage
         self._init_cuda_buffer(batchsize, self.truncate or 256)
         self.model.train()
+        #self.pretrain_weight
         self.zero_grad()
 
         try:
-            loss, margin_loss, mean_input_embed, model_output = self.compute_loss(batch, return_output=True)
+            loss, margin_loss, model_output, cur_batch_input_emb = self.compute_loss(batch, return_output=True)
             batch_loss = compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX)
             self.metrics['loss'] += loss.item()
             self.backward(loss)
             self.update_params()
-            return loss, model_output, batch_loss, margin_loss, mean_input_embed
+            return loss, model_output, batch_loss, margin_loss, cur_batch_input_emb
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):
@@ -91,7 +93,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             train_return = self.train_step(batch)
             if train_return is not None:
                 #            return loss, model_output, batch_loss, margin_loss, mean_input_embed
-                _, model_output, batch_loss, margin_loss, mean_input_embed = train_return
+                _, model_output, batch_loss, margin_loss, cur_batch_input_emb = train_return
                 # print('batch_act mean_input_embed', mean_input_embed)
                 scores, *_ = model_output
                 scores = scores.detach()
@@ -113,7 +115,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 reply['loss_desc'] = loss_desc
                 reply['margin_loss'] = margin_loss
                 reply['prob_desc'] = prob_desc
-                reply['mean_input_embed'] = mean_input_embed
+                reply['cur_batch_input_emb'] = cur_batch_input_emb
             return batch_reply
         else:
             with torch.no_grad():
@@ -166,12 +168,13 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if batch.label_vec is None:
             raise ValueError('Cannot compute loss without a label.')
 
-        if self.prev_mean_input_emb is not None:
-            model_output = self.model(*self._model_input(batch), ys=batch.label_vec, prev_emb = self.prev_mean_input_emb.detach())
-        else:
-            model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
+        # if self.prev_mean_input_emb is not None:
+        #     model_output = self.model(*self._model_input(batch), ys=batch.label_vec, prev_emb = self.prev_mean_input_emb.detach())
+        # else:
+        cur_batch_input = self._model_input(batch)
+        model_output = self.model(*cur_batch_input, ys=batch.label_vec)
 
-        scores, preds, encoder_states, mean_input_embed, prev_emb = model_output
+        scores, preds, encoder_states = model_output
         score_view = scores.view(-1, scores.size(-1))
         generation_loss = self.criterion(score_view, batch.label_vec.view(-1))
 
@@ -180,14 +183,23 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         correct = ((batch.label_vec == preds) * notnull).sum().item()
 
         loss = generation_loss/target_tokens  # average loss per token
-
-        if prev_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
+        # print('self.prev_batch_input', self.prev_batch_input)
+        # print('self.cur_batch_input', cur_batch_input[0])
+        cur_batch_input_emb = self.model.pretrain_embedding(cur_batch_input[0])
+        if self.prev_batch_input is not None and len(batch.text_vec) == self.opt['batchsize']:
             # print('='*20)
             # Use mean_input_embed and self.prev_mean_input_emb calculate distance
             # cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
             # cos_sim_score = torch.mean(cos_sim).float()
             # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
-            margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
+            # print(self.prev_batch_input.size())
+            # print(cur_batch_input[0].size())
+            # print(self.model.pretrain_embedding)
+            prev_batch_input_emb = self.model.pretrain_embedding(self.prev_batch_input)
+            # cur_batch_input_emb = self.model.pretrain_embedding(cur_batch_input[0])
+            # print(prev_batch_input_emb.size())
+            # print(cur_batch_input_emb.size())
+            margin_loss = -F.cosine_similarity(prev_batch_input_emb, cur_batch_input_emb).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
@@ -196,14 +208,16 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         # print('compute_loss prev_emb', prev_emb)
         # print('compute_loss mean_input_embed', mean_input_embed)
 
+        # if len(batch.text_vec) == self.opt['batchsize']:
+        #      self.prev_mean_input_emb = mean_input_embed
         if len(batch.text_vec) == self.opt['batchsize']:
-             self.prev_mean_input_emb = mean_input_embed
+            self.prev_batch_input = cur_batch_input[0] #self._model_input(batch)[0]
         # save loss to metrics
         self.metrics['correct_tokens'] += correct
         self.metrics['nll_loss'] += loss.item()
         self.metrics['num_tokens'] += target_tokens
 
         if return_output:
-            return (loss, margin_loss, mean_input_embed, model_output)
+            return (loss, margin_loss, model_output, cur_batch_input_emb)
         else:
             return (loss, margin_loss)

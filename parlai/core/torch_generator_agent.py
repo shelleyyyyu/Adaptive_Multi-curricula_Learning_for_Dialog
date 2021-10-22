@@ -92,9 +92,9 @@ class TorchGeneratorModel(nn.Module):
         logits = []
         for _i in range(maxlen):
             # todo, break early if all beams saw EOS
-            scores, incr_state, mean_emb = self.decoder(xs, encoder_states, incr_state)
+            scores, incr_state = self.decoder(xs, encoder_states, incr_state)
             scores = scores[:, -1:, :]
-            scores, _ = self.output(scores, mean_emb)
+            scores = self.output(scores)
             _, preds = scores.max(dim=-1)
             logits.append(scores)
             xs = torch.cat([xs, preds], dim=1)
@@ -103,7 +103,7 @@ class TorchGeneratorModel(nn.Module):
             if all_finished:
                 break
         logits = torch.cat(logits, 1)
-        return logits, xs, mean_emb
+        return logits, xs
 
     def decode_forced(self, encoder_states, ys):
         """
@@ -132,10 +132,12 @@ class TorchGeneratorModel(nn.Module):
         seqlen = ys.size(1)
         inputs = ys.narrow(1, 0, seqlen - 1)
         inputs = torch.cat([self._starts(bsz), inputs], 1)
-        latent, _, mean_emb = self.decoder(inputs, encoder_states)
-        logits, mean_emb = self.output(latent, mean_emb)
+        latent, _ = self.decoder(inputs, encoder_states)
+        # print('input', input)
+        # print('input', input.size())
+        logits = self.output(latent)
         _, preds = logits.max(dim=2)
-        return logits, preds, mean_emb
+        return logits, preds
 
     def reorder_encoder_states(self, encoder_states, indices):
         """
@@ -267,15 +269,15 @@ class TorchGeneratorModel(nn.Module):
 
         if ys is not None:
             # use teacher forcing
-            scores, preds, mean_emb = self.decode_forced(encoder_states, ys)
+            scores, preds = self.decode_forced(encoder_states, ys)
         else:
-            scores, preds, mean_emb = self.decode_greedy(
+            scores, preds = self.decode_greedy(
                 encoder_states,
                 bsz,
                 maxlen or self.longest_label
             )
 
-        return scores, preds, encoder_states, mean_emb
+        return scores, preds, encoder_states
 
 
 class TorchGeneratorAgent(TorchAgent):

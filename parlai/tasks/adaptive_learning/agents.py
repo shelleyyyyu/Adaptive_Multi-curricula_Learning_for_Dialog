@@ -383,8 +383,6 @@ class DefaultTeacher(FbDialogTeacher):
     def pace_function(self, states, sum_num, T=1000, c0=0.01, p=2):
         train_step = states['train_step']
         progress = self.root_p_pace(train_step, T, c0, p)
-        # # TODO: set to 1.0 for random sampling training data for current experiment
-        # progress = 1.0
         return int(sum_num * progress)
 
     @staticmethod
@@ -437,9 +435,8 @@ class DefaultTeacher(FbDialogTeacher):
 
         prob_desc = observations[0]['prob_desc']
         prob_desc = F.normalize(prob_desc, p=2, dim=-1)
-        mean_input_embed = observations[0]['mean_input_embed']
+        cur_batch_input_emb = observations[0]['cur_batch_input_emb']
 
-        # print('_build_states mean_input_embed', mean_input_embed)
 
         if hasattr(self, 'subtask_counter'):
             subtask_progress = self.subtask_counter.values()
@@ -484,7 +481,7 @@ class DefaultTeacher(FbDialogTeacher):
         if self.use_cuda:
             states = states.cuda()
         states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
-        return states, margin_loss, mean_input_embed
+        return states, margin_loss, cur_batch_input_emb
 
     def __uniform_weights(self):
         w = 1 / len(self.tasks)
@@ -497,11 +494,12 @@ class DefaultTeacher(FbDialogTeacher):
         if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
             if not self.random_policy:
                 with torch.no_grad():
-                    current_states, margin_loss, mean_input_embed = self._build_states(observations)
-                # print('__load_training_batch mean_input_embed', mean_input_embed)
-                # print()
-                self.history_mean_embed.append(mean_input_embed.detach())
+                    current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
+                cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
+                self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
                 history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
+                print('history_mean_emb_tensor', history_mean_emb_tensor.size())
+
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
