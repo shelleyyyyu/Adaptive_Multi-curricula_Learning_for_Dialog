@@ -1501,7 +1501,7 @@ class TorchAgent(Agent):
         if self.fp16:
             self.optimizer.backward(loss, update_master_grads=False)
         else:
-            loss.backward()
+            loss.backward(retain_graph=True)
 
     def update_params(self):
         """
