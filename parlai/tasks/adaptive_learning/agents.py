@@ -502,8 +502,8 @@ class DefaultTeacher(FbDialogTeacher):
 
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
-                action = sample_from.sample()
-                # action = torch.argmax(action_probs)
+                # action = sample_from.sample()
+                action = torch.argmax(action_probs)
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
