@@ -201,7 +201,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # print(prev_batch_input_emb.size())
             # print(cur_batch_input_emb.size())
             margin_loss = -F.cosine_similarity(prev_batch_input_emb, cur_batch_input_emb).abs().mean()
-            loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
+            #loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
             margin_loss = -1
