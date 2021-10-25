@@ -204,7 +204,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             loss = self.margin_rate * -margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
-            margin_loss = -1
+            margin_loss = 0.0
 
         # print('compute_loss prev_emb', prev_emb)
         # print('compute_loss mean_input_embed', mean_input_embed)
