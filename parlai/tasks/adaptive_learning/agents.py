@@ -491,6 +491,7 @@ class DefaultTeacher(FbDialogTeacher):
         return weights.unsqueeze(dim=0)
 
     def __load_training_batch(self, observations):
+
         if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
             if not self.random_policy:
                 with torch.no_grad():
@@ -504,6 +505,10 @@ class DefaultTeacher(FbDialogTeacher):
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
                 #action = sample_from.sample()
+                for key in self.subtask_counter.keys():
+                    if self.subtask_counter[key] != 0:
+                        action_probs[0][int(key)] = 0.0
+
                 action = torch.argmax(action_probs)
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
