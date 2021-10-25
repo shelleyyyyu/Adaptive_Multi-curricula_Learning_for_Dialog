@@ -200,7 +200,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             # cur_batch_input_emb = self.model.pretrain_embedding(cur_batch_input[0])
             # print(prev_batch_input_emb.size())
             # print(cur_batch_input_emb.size())
-            margin_loss = F.cosine_similarity(torch.mean(prev_batch_input_emb, 0), torch.mean(cur_batch_input_emb, 0)).abs().mean()
+            margin_loss = F.cosine_similarity(torch.mean(prev_batch_input_emb, 0), torch.mean(cur_batch_input_emb, 0)).abs().mean()+ self.margin
             loss = self.margin_rate * -margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
