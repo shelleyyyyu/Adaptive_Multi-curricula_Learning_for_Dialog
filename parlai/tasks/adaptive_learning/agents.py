@@ -495,7 +495,7 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
-                if cur_batch_input_emb:
+                if cur_batch_input_emb is not None:
                     cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
                     self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
                 history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
