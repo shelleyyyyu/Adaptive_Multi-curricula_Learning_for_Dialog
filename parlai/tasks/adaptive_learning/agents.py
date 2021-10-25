@@ -508,8 +508,10 @@ class DefaultTeacher(FbDialogTeacher):
                 for key in self.subtask_counter.keys():
                     if self.subtask_counter[key] != 0:
                         action_probs[0][int(key)] = 0.0
-
-                action = torch.argmax(action_probs)
+                if len([item for item in action_probs[0] if item > 0.0]) != 0:
+                    action = torch.argmax(action_probs)
+                else:
+                    action = sample_from.sample()
                 if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                     with torch.no_grad():
                         # log the action distributions
