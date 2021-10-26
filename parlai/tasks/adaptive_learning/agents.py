@@ -132,7 +132,7 @@ class DefaultTeacher(FbDialogTeacher):
                 self.c_selections = shared['c_selections']
 
         # build the policy net, criterion and optimizer here
-        self.state_dim = 33 + len(self.tasks)  # hand-craft features
+        self.state_dim = 18 + len(self.tasks)  # hand-craft features
         self.action_dim = len(self.tasks)
 
         if not shared:
@@ -472,12 +472,12 @@ class DefaultTeacher(FbDialogTeacher):
         word_entropy_uni = prev_valid_report.get('word_entropy_uni', 0) / 100
         word_entropy_bi = prev_valid_report.get('word_entropy_bi', 0) / 100
         word_entropy_tri = prev_valid_report.get('word_entropy_tri', 0) / 100
-        states = torch.FloatTensor([train_step, nll_loss, margin_loss, bleu, valid_nll_loss,
-                                    dist_1_ratio, dist_2_ratio, dist_3_ratio,
-                                    embed_avg, embed_greedy, embed_extrema, embed_coh,
-                                    intra_dist_1, intra_dist_2, intra_dist_3, response_length,
-                                    # sent_entropy_uni, sent_entropy_bi, sent_entropy_tri,
-                                    word_entropy_uni, word_entropy_bi, word_entropy_tri])
+        states = torch.FloatTensor([train_step, nll_loss, margin_loss, valid_nll_loss])
+                                    # bleu, dist_1_ratio, dist_2_ratio, dist_3_ratio,
+                                    # embed_avg, embed_greedy, embed_extrema, embed_coh,
+                                    # intra_dist_1, intra_dist_2, intra_dist_3, response_length,
+                                    # # sent_entropy_uni, sent_entropy_bi, sent_entropy_tri,
+                                    # word_entropy_uni, word_entropy_bi, word_entropy_tri])
         if self.use_cuda:
             states = states.cuda()
         states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
