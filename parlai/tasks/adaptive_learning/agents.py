@@ -136,7 +136,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.action_dim = len(self.tasks)
 
         if not shared:
-            self.policy = PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)# PolicyNet_MLP(self.state_dim, self.action_dim)
+            self.policy = PolicyNet_MLP(self.state_dim, self.action_dim)#PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)
             self.critic = CriticNet(self.state_dim, self.action_dim)
 
             init_teacher = get_init_teacher(opt, shared)
@@ -496,13 +496,13 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
-                if cur_batch_input_emb is not None:
-                    cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
-                    self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
-                history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
+                # if cur_batch_input_emb is not None:
+                #     cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
+                #     self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
+                #history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
 
-                action_probs = self.policy(current_states, history_mean_emb_tensor.detach())#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
+                action_probs = self.policy(current_states)#, history_mean_emb_tensor.detach())
                 sample_from = Categorical(action_probs[0])
                 #action = sample_from.sample()
                 for key in self.subtask_counter.keys():
