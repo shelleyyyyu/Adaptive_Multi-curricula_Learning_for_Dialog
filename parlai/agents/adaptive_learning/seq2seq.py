@@ -64,6 +64,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 # out of sync! catch up with the other workers
                 self._init_cuda_buffer(8, 8, True)
             else:
+                print(e)
                 raise e
 
     def batch_act(self, observations):
