@@ -183,7 +183,7 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  nohup python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
+  nohup python -u ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
   cd -
 }
 

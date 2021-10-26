@@ -505,9 +505,13 @@ class DefaultTeacher(FbDialogTeacher):
                 action_probs = self.policy(current_states)#, history_mean_emb_tensor.detach())
                 sample_from = Categorical(action_probs[0])
                 #action = sample_from.sample()
+                print(action_probs)
+                print(self.subtask_counter)
                 for key in self.subtask_counter.keys():
                     if self.subtask_counter[key] != 0:
                         action_probs[0][int(key)] = 0.0
+                print(action_probs)
+                exit()
                 if len([item for item in action_probs[0] if item > 0.0]) != 0:
                     action = torch.argmax(action_probs)
                     if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
