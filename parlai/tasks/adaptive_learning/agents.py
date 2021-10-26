@@ -510,17 +510,27 @@ class DefaultTeacher(FbDialogTeacher):
                         action_probs[0][int(key)] = 0.0
                 if len([item for item in action_probs[0] if item > 0.0]) != 0:
                     action = torch.argmax(action_probs)
+                    if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                        with torch.no_grad():
+                            log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                            print(log)
+                            self.action_log_time.reset()
                 else:
                     action = sample_from.sample()
-                if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
-                    with torch.no_grad():
-                        # log the action distributions
-                        #action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
-                        #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
-                        #log = '[ {} {}; {} {}]'.format('Selected Action:', action, 'Margin Loss:', margin_loss)
-                        log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
-                        print(log)
-                        self.action_log_time.reset()
+                    if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                        with torch.no_grad():
+                            log = 'Sampled Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                            print(log)
+                            self.action_log_time.reset()
+                # if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                #     with torch.no_grad():
+                #         # log the action distributions
+                #         #action_p = ','.join([str(round_sigfigs(x, 4)) for x in action_probs[0].data.tolist()])
+                #         #log = '[ {} {} {} {}]'.format('Selected Action:', action, '; Action probs:', action_p)
+                #         #log = '[ {} {}; {} {}]'.format('Selected Action:', action, 'Margin Loss:', margin_loss)
+                #         log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                #         print(log)
+                #         self.action_log_time.reset()
                 train_step = observations[0]['train_step']
                 self.saved_actions[train_step] = sample_from.log_prob(action)
                 self.saved_state_actions[train_step] = torch.cat([current_states, action_probs], dim=1)
