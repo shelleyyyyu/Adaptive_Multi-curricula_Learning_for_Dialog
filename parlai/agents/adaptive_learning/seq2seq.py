@@ -218,6 +218,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         # save loss to metrics
         self.metrics['correct_tokens'] += correct
         self.metrics['nll_loss'] += loss.item()
+        self.metrics['margin_loss'] += margin_loss
         self.metrics['num_tokens'] += target_tokens
 
         if return_output:

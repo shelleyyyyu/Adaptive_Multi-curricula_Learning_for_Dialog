@@ -429,7 +429,7 @@ class DefaultTeacher(FbDialogTeacher):
         train_step = min(train_step / self.T, 1)
         train_report = observations[0]['train_report']
         nll_loss = train_report.get('nll_loss', 0) / 10  # scala
-        margin_loss = observations[0].get('margin_loss', 0)  # scala
+        margin_loss = observations[0].get('margin_loss', 0) # scala
         loss_desc = observations[0]['loss_desc']
         loss_desc = F.normalize(loss_desc, p=2, dim=-1)
 
@@ -508,11 +508,11 @@ class DefaultTeacher(FbDialogTeacher):
 
                 for key in self.subtask_counter.keys():
                     if self.subtask_counter[key] != 0:
-                        print(key, ', selected; origin probs', action_probs[0][int(key)])
+                        # print(key, ', selected; origin probs', action_probs[0][int(key)])
                         action_probs[0][int(key)] = 0.0
                 tmp_list = [probs for probs in action_probs[0] if probs == 0.0]
-                print(len(tmp_list))
-                print('-'*20)
+                # print(len(tmp_list))
+                # print('-'*20)
                 if len([item for item in action_probs[0] if item > 0.0]) != 0:
                     action = torch.argmax(action_probs)
                     if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:

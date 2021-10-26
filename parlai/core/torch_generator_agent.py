@@ -334,6 +334,7 @@ class TorchGeneratorAgent(TorchAgent):
             self.metrics = {
                 'nll_loss': 0.0,
                 'loss': 0.0,
+                'margin_loss': 0.0,
                 'num_tokens': 0,
                 'correct_tokens': 0,
                 'total_skipped_batches': 0
