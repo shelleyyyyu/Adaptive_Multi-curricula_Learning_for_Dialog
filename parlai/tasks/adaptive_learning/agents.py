@@ -510,7 +510,7 @@ class DefaultTeacher(FbDialogTeacher):
                     if self.subtask_counter[key] != 0:
                         print(key, ', selected; origin probs', action_probs[0][int(key)])
                         action_probs[0][int(key)] = 0.0
-                tmp_list = [probs for probs in action_probs[0] if action_probs == 0.0]
+                tmp_list = [probs for probs in action_probs[0] if probs == 0.0]
                 print(tmp_list, len(tmp_list))
                 print('-'*20)
                 if len([item for item in action_probs[0] if item > 0.0]) != 0:
