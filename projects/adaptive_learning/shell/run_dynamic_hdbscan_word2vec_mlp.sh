@@ -38,29 +38,6 @@ declare -A subtasks_list=(
   ["loss_of_hred"]="loss_of_hred"
   ["loss_of_dialogwae"]="loss_of_dialogwae"
   ["combine_hdbscan_w2v_2"]="hbscan_word2vec_2_1441_B:0:1439"
-#  ["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
-#  ["combine_v1"]="kmeans_v1:0:99"
-#  ["combine_v2"]="kmeans_v2:0:9"
-#  ["combine_v3"]="kmeans_v3:0:19"
-#  ["combine_v4"]="kmeans_v4:0:29"
-#  ["combine_v5"]="kmeans_v5:0:49"
-#  ["combine_v6"]="kmeans_v6:0:999"
-#  ["combine_v7"]="kmeans_v7:0:999"
-#  ["combine_v8"]="kmeans_keyword_tfidf_A_1_100:0:99"
-#  ["combine_v9"]="kmeans_keyword_tfidf_B_1_100:0:99"
-#  ["combine_v10"]="kmeans_keyword_tfidf_A_2_100:0:99"
-#  ["combine_v11"]="kmeans_keyword_tfidf_B_2_100:0:99"
-#  ["combine_v12"]="kmeans_keyword_tfidf_A_3_100:0:99"
-#  ["combine_v13"]="kmeans_keyword_tfidf_B_3_100:0:99"
-#  ["combine_v14"]="kmeans_keyword_tfidf_C_1_5:0:4"
-#  ["combine_v15"]="kmeans_keyword_tfidf_C_2_5:0:4"
-#  ["combine_v16"]="kmeans_keyword_tfidf_C_3_5:0:4"
-#  ["combine_v17"]="kmeans_keyword_tfidf_D_1_5:0:4"
-#  ["combine_v18"]="kmeans_keyword_tfidf_D_2_5:0:4"
-#  ["combine_v19"]="kmeans_keyword_tfidf_D_3_5:0:4"
-#  ["combine_kmeans_w2v_100"]="kmeans_word2vec_100:0:99"
-#  ["combine_kmeans_w2v_1000"]="kmeans_word2vec_1000:0:999"
-#  ["combine_hdbscan_w2v_3"]="hbscan_word2vec_3_769_B:0:767"
 )
 
 declare -A bszs=(
@@ -137,12 +114,9 @@ function train_model() {
   fi
 
   local subtasks=${subtasks_list[${real_attr}]}
-  #if [[ "${real_attr}" == "combine" ]]; then
-  #  subtasks=${subtasks}:loss_of_${model_name}
-  #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_dynamic_hdbscan_v3/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dynamic_hdbscan_mlp/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -183,9 +157,9 @@ function train_model() {
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
 
-  nohup python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
+  nohup python -u ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
   cd -
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_kmeans combine_hdbscan_w2v_2 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=1; train_model seq2seq personachat_h3_dynamic_kmeans combine_hdbscan_w2v_2 11000 -1 0.2 30
