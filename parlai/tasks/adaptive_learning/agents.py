@@ -472,7 +472,7 @@ class DefaultTeacher(FbDialogTeacher):
 
     def __load_training_batch(self, observations):
 
-        if observations and len(observations) > 0 and observations[0] and self.is_combine_attr:
+        if observations and len(observations) > 0 and observations[0] and self.is_combine_attr and self.previous_task_idx != -1:
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
@@ -516,12 +516,7 @@ class DefaultTeacher(FbDialogTeacher):
                 #         print(log)
                 #         self.action_log_time.reset()
                 sample_from = Categorical(action_probs[0])
-                valid_task = [item for idx, item in enumerate(self.task_done) if item == False]
-                if len(valid_task) == 0:
-                    self.round_count += 1
-                    print('-'*5+'ALL DATA GO THROUGH: '+str(self.round_count)+' times.'+'-'*5)
-                    self.previous_task_idx=-1
-                    self.previous_task_action=None
+
                 if self.task_done[self.previous_task_idx] == False or (self.previous_task_action and self.task_done[self.previous_task_action.item()] == False):
                     #sample_from = Categorical(action_probs[0])
                     action = self.previous_task_action
@@ -567,8 +562,6 @@ class DefaultTeacher(FbDialogTeacher):
             selected_task = 0
             self.previous_task_idx = selected_task
         #self.previous_task_idx = selected_task
-
-
         return self.__load_batch(observations, task_idx=selected_task)
 
     def act(self, observation=None, task_idx=0):
@@ -607,6 +600,13 @@ class DefaultTeacher(FbDialogTeacher):
 
         if len([i for i in self.sample_counter[self.subtasks[task_idx]] if i == 0]) == 0:
             self.task_done[task_idx] = True
+
+        valid_task = [item for idx, item in enumerate(self.task_done) if item == False]
+        if len(valid_task) == 0:
+            self.round_count += 1
+            print('-' * 5 + 'ALL DATA GO THROUGH: ' + str(self.round_count) + ' times.' + '-' * 5)
+            self.previous_task_idx = -1
+            self.previous_task_action = None
 
         return batch
 
