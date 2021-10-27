@@ -207,6 +207,7 @@ class DefaultTeacher(FbDialogTeacher):
                 self.saved_actions[k] = v.cuda()
             for k, v in self.saved_state_actions.items():
                 self.saved_state_actions[k] = v.cuda()
+
         self._number_teacher_updates = states['_number_teacher_updates'] if '_number_teacher_updates' in states else 0
 
         # enable the batch_act
@@ -495,12 +496,13 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
-                cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
-                self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
-                history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
+                # cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
+                # self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
+                # history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
-
-                action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
+                cur_batch_input_emb_mean = torch.mean(torch.mean(cur_batch_input_emb, dim=0), dim=0)
+                self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
+                action_probs = self.policy(current_states, cur_batch_input_emb)#, history_mean_emb_tensor.detach())
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
                 # action = torch.argmax(action_probs)
@@ -844,6 +846,13 @@ class DefaultTeacher(FbDialogTeacher):
                 for task_name, task_val in self.sample_counter.items():
                     with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
                         f.write('\n'.join([str(item) for item in task_val]))
+
+            with open(teacher_path + '.mean.embedding', 'w', encoding='utf-8') as f:
+                if self.history_mean_embed is not None:
+                    print(len(self.history_mean_embed))
+                    for emb in self.history_mean_embed:
+                        f.write(str(emb)+'\n')
+
 
             self.write_selections('p_selections', teacher_path)
             self.write_selections('c_selections', teacher_path)
