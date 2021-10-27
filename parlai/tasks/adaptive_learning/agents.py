@@ -607,6 +607,7 @@ class DefaultTeacher(FbDialogTeacher):
             print('-' * 5 + 'ALL DATA GO THROUGH: ' + str(self.round_count) + ' times.' + '-' * 5)
             self.previous_task_idx = -1
             self.previous_task_action = None
+            self.task_done = [False] * len(self.tasks)
 
         return batch
 
