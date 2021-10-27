@@ -239,13 +239,28 @@ class TransformerFFN(nn.Module):
 
 class PolicyNet_MLP(nn.Module):
 
-    def __init__(self, state_dim, action_dim):
+    def __init__(self, opt, state_dim, action_dim):
         super().__init__()
-        self.policy = FeedForward(state_dim, action_dim, hidden_sizes=(128, 64))
+        self.emb_policy = FeedForward(opt['fix_pad_length'], action_dim, hidden_sizes=(128, 64))
+        self.state_policy = FeedForward(state_dim, action_dim, hidden_sizes=(128, 64))
+        self.policy = FeedForward(opt['batchsize']+1, 1, hidden_sizes=(64, 32))
 
-    def forward(self, state):
-        action_score = self.policy(state)
-        action_prob = F.softmax(action_score, dim=-1)
+    def forward(self, state, prev_mean_emb):
+        # print(prev_mean_emb.size())
+        # print(state.size())
+        prev_mean_emb = torch.mean(prev_mean_emb, dim=2)
+        # print(prev_mean_emb.size())
+        action_history = self.emb_policy(prev_mean_emb)
+        # print(action_history.size())
+        action_score = self.state_policy(state)
+        # print(action_score.size())
+        action = torch.cat((action_score, action_history), dim=0)
+        # print(action.size())
+        action = self.policy(action.t())
+        # print(action.size())
+        action_prob = F.softmax(action.t(), dim=-1)
+        # print(action_prob.size())
+        # print(action_prob)
 
         return action_prob
 

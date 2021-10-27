@@ -140,7 +140,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.previous_task_idx = -1
 
         if not shared:
-            self.policy = PolicyNet_MLP(self.state_dim, self.action_dim)#PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)
+            self.policy = PolicyNet_MLP(self.opt, self.state_dim, self.action_dim)#PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)
             self.critic = CriticNet(self.state_dim, self.action_dim)
 
             init_teacher = get_init_teacher(opt, shared)
@@ -482,7 +482,7 @@ class DefaultTeacher(FbDialogTeacher):
                 #history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
 
-                action_probs = self.policy(current_states)#, history_mean_emb_tensor.detach())
+                action_probs = self.policy(current_states, cur_batch_input_emb)#, history_mean_emb_tensor.detach())
                 # print('-'*20)
                 # print('previous_task_action', self.previous_task_action)
                 # print('previous_task_idx', self.previous_task_idx)
