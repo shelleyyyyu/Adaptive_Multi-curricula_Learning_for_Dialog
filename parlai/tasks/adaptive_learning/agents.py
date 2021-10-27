@@ -63,6 +63,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.count_sample = opt.get('count_sample', False)
         self.anti = opt.get('anti', False)
         self.history_mean_embed = []
+        self.random = False
 
         if self.random_policy:
             random.seed(17)
@@ -132,8 +133,11 @@ class DefaultTeacher(FbDialogTeacher):
                 self.c_selections = shared['c_selections']
 
         # build the policy net, criterion and optimizer here
-        self.state_dim = 18 + len(self.tasks)  # hand-craft features
+        self.state_dim = 33 + len(self.tasks)  # hand-craft features
         self.action_dim = len(self.tasks)
+        self.task_done = [False] * len(self.tasks)
+        self.previous_task_action = None
+        self.previous_task_idx = -1
 
         if not shared:
             self.policy = PolicyNet_MLP(self.state_dim, self.action_dim)#PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)
@@ -220,7 +224,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.log_every_n_secs = opt['log_every_n_secs'] if opt['log_every_n_secs'] > 0 \
             else float('inf')
         self.action_log_time = Timer()
-
+        self.round_count = 0
         self.move_to_cuda()
 
     def move_to_cuda(self):
@@ -391,30 +395,6 @@ class DefaultTeacher(FbDialogTeacher):
         # print("root_p_pace// root_p: %.4f" %(root_p))
         return min(1.0, root_p)
 
-
-    def act(self, observation=None, task_idx=0):
-        """Send new dialog message."""
-        if not hasattr(self, 'epochDone'):
-            # reset if haven't yet
-            self.reset()
-        # print('act task_idx: %d'%(task_idx))
-        # get next example, action is episode_done dict if already out of exs
-        action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
-        action['id'] = self.getID()
-
-        # remember correct answer if available
-        self.lastY = action.get('labels', action.get('eval_labels', None))
-        if ((not self.datatype.startswith('train') or 'evalmode' in self.datatype) and
-                'labels' in action):
-            # move labels to eval field so not used for training
-            # but this way the model can use the labels for perplexity or loss
-            action = action.copy()
-            labels = action.pop('labels')
-            if not self.opt.get('hide_labels', False):
-                action['eval_labels'] = labels
-
-        return action
-
     def _cry_for_missing_in_obs(self, something):
         raise RuntimeError(
             "{} is needed to include in observations to build states!".format(something)
@@ -472,12 +452,12 @@ class DefaultTeacher(FbDialogTeacher):
         word_entropy_uni = prev_valid_report.get('word_entropy_uni', 0) / 100
         word_entropy_bi = prev_valid_report.get('word_entropy_bi', 0) / 100
         word_entropy_tri = prev_valid_report.get('word_entropy_tri', 0) / 100
-        states = torch.FloatTensor([train_step, nll_loss, margin_loss, valid_nll_loss])
-                                    # bleu, dist_1_ratio, dist_2_ratio, dist_3_ratio,
-                                    # embed_avg, embed_greedy, embed_extrema, embed_coh,
-                                    # intra_dist_1, intra_dist_2, intra_dist_3, response_length,
-                                    # # sent_entropy_uni, sent_entropy_bi, sent_entropy_tri,
-                                    # word_entropy_uni, word_entropy_bi, word_entropy_tri])
+        states = torch.FloatTensor([train_step, nll_loss, margin_loss, bleu, valid_nll_loss,
+                                    dist_1_ratio, dist_2_ratio, dist_3_ratio,
+                                    embed_avg, embed_greedy, embed_extrema, embed_coh,
+                                    intra_dist_1, intra_dist_2, intra_dist_3, response_length,
+                                    # sent_entropy_uni, sent_entropy_bi, sent_entropy_tri,
+                                    word_entropy_uni, word_entropy_bi, word_entropy_tri])
         if self.use_cuda:
             states = states.cuda()
         states = torch.cat([states, loss_desc, prob_desc, subtask_progress], dim=-1).unsqueeze(dim=0)
@@ -503,30 +483,29 @@ class DefaultTeacher(FbDialogTeacher):
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
 
                 action_probs = self.policy(current_states)#, history_mean_emb_tensor.detach())
-                sample_from = Categorical(action_probs[0])
-                #action = sample_from.sample()
-
-                for key in self.subtask_counter.keys():
-                    if self.subtask_counter[key] != 0:
-                        # print(key, ', selected; origin probs', action_probs[0][int(key)])
-                        action_probs[0][int(key)] = 0.0
-                tmp_list = [probs for probs in action_probs[0] if probs == 0.0]
-                # print(len(tmp_list))
                 # print('-'*20)
-                if len([item for item in action_probs[0] if item > 0.0]) != 0:
-                    action = torch.argmax(action_probs)
-                    if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
-                        with torch.no_grad():
-                            log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
-                            print(log)
-                            self.action_log_time.reset()
-                else:
-                    action = sample_from.sample()
-                    if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
-                        with torch.no_grad():
-                            log = 'Sampled Action: %d; Margin Loss: %.4f' %(action, margin_loss)
-                            print(log)
-                            self.action_log_time.reset()
+                # print('previous_task_action', self.previous_task_action)
+                # print('previous_task_idx', self.previous_task_idx)
+                # print('self.task_done', self.task_done[self.previous_task_idx])
+
+                # for key in self.subtask_counter.keys():
+                #     if self.subtask_counter[key] != 0:
+                #         action_probs[0][int(key)] = 0.0
+                #
+                # if len([item for item in action_probs[0] if item > 0.0]) != 0:
+                #     action = torch.argmax(action_probs)
+                #     if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                #         with torch.no_grad():
+                #             log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                #             print(log)
+                #             self.action_log_time.reset()
+                # else:
+                #     action = sample_from.sample()
+                #     if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                #         with torch.no_grad():
+                #             log = 'Sampled Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                #             print(log)
+                #             self.action_log_time.reset()
                 # if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
                 #     with torch.no_grad():
                 #         # log the action distributions
@@ -536,6 +515,34 @@ class DefaultTeacher(FbDialogTeacher):
                 #         log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
                 #         print(log)
                 #         self.action_log_time.reset()
+                sample_from = Categorical(action_probs[0])
+                valid_task = [item for idx, item in enumerate(self.task_done) if item == False]
+                if len(valid_task) == 0:
+                    self.round_count += 1
+                    print('-'*5+'ALL DATA GO THROUGH: '+str(self.round_count)+' times.'+'-'*5)
+                    self.previous_task_idx=-1
+                    self.previous_task_action=None
+                if self.task_done[self.previous_task_idx] == False or (self.previous_task_action and self.task_done[self.previous_task_action.item()] == False):
+                    #sample_from = Categorical(action_probs[0])
+                    action = self.previous_task_action
+                    # print('selected_action', action.item())
+                    # print('num_episodes: ', self.tasks[action.item()].num_episodes())
+                else:
+                    action = torch.argmax(action_probs[0])
+                    list = torch.argsort(action_probs[0])
+                    for item in list:
+                        if self.task_done[item] == False:
+                            action = item
+                    # print('selected_action', action.item())
+                    # print('num_episodes: ', self.tasks[int(action.item())].num_episodes())
+                # print('-' * 20)
+                if self.action_log_time.time() > self.log_every_n_secs and len(self.tasks) > 1:
+                    with torch.no_grad():
+                        log = 'Selected Action: %d; Margin Loss: %.4f' %(action, margin_loss)
+                        print(log)
+                        self.action_log_time.reset()
+
+
                 train_step = observations[0]['train_step']
                 self.saved_actions[train_step] = sample_from.log_prob(action)
                 self.saved_state_actions[train_step] = torch.cat([current_states, action_probs], dim=1)
@@ -550,13 +557,42 @@ class DefaultTeacher(FbDialogTeacher):
                     selection_report['c_{}'.format(t)] = self.subtask_counter[t]
                     self.c_selections[t].append(self.subtask_counter[t])
                 self.writer.add_metrics(setting='Teacher/task_selection', step=train_step, report=selection_report)
+                self.previous_task_action = action
+                self.previous_task_idx = selected_task
             else:
                 selected_task = random.choice(range(len(self.tasks)))
                 self.subtask_counter[self.subtasks[selected_task]] += 1
+                self.previous_task_idx = selected_task
         else:
             selected_task = 0
+            self.previous_task_idx = selected_task
+        #self.previous_task_idx = selected_task
+
 
         return self.__load_batch(observations, task_idx=selected_task)
+
+    def act(self, observation=None, task_idx=0):
+        """Send new dialog message."""
+        if not hasattr(self, 'epochDone'):
+            # reset if haven't yet
+            self.reset()
+
+        # get next example, action is episode_done dict if already out of exs
+        action, self.epochDone = self.next_example(observation=observation, task_idx=task_idx)
+        action['id'] = self.getID()
+
+        # remember correct answer if available
+        self.lastY = action.get('labels', action.get('eval_labels', None))
+        if ((not self.datatype.startswith('train') or 'evalmode' in self.datatype) and
+                'labels' in action):
+            # move labels to eval field so not used for training
+            # but this way the model can use the labels for perplexity or loss
+            action = action.copy()
+            labels = action.pop('labels')
+            if not self.opt.get('hide_labels', False):
+                action['eval_labels'] = labels
+
+        return action
 
     def __load_batch(self, observations, task_idx=0):
         # print('__load_batch task_idx: %d' % (task_idx))
@@ -568,6 +604,10 @@ class DefaultTeacher(FbDialogTeacher):
         # Sample from multiple tasks using the policy net
         for idx in range(bsz):
             batch.append(self.act(observations[idx], task_idx=task_idx))
+
+        if len([i for i in self.sample_counter[self.subtasks[task_idx]] if i == 0]) == 0:
+            self.task_done[task_idx] = True
+
         return batch
 
     def batch_act(self, observations):
@@ -623,8 +663,11 @@ class DefaultTeacher(FbDialogTeacher):
 
             if self.episode_idx >= sum_num:
                 return {'episode_done': True}, True
-            threshold, stop_step = -1, -1
             if observation is None or self.opt['datatype'] != 'train':
+                # The first step of the training or validation mode
+                sampled_episode_idx = self.episode_idx
+                sampled_entry_idx = self.entry_idx
+            elif self.opt['datatype'] == 'train':
                 # The first step of the training or validation mode
                 sampled_episode_idx = self.episode_idx
                 sampled_entry_idx = self.entry_idx
@@ -664,8 +707,7 @@ class DefaultTeacher(FbDialogTeacher):
 
             if self.count_sample:
                 self.sample_counter[self.subtasks[task_idx]][sampled_episode_idx] += 1
-            # print("task_idx: %d; sum_num: %d; sampled_episode_idx: %d; threshold: %d; stop_step: %d"%(task_idx, sum_num, sampled_episode_idx, threshold, stop_step))
-            # print('-'*20)
+
             ex = self.get(sampled_episode_idx, sampled_entry_idx, task_idx=task_idx)
 
             if observation is None or self.opt['datatype'] != 'train':

@@ -587,37 +587,37 @@ class TrainLoop():
                     break
                 if log_time > self.log_every_n_secs:
                     self.log()
-                #TODO: Temp shut down evaluation and test
-                # if (
-                #     validate_time > self.val_every_n_secs or
-                #     self._total_epochs - self.last_valid_epoch
-                #         >= self.val_every_n_epochs
-                # ):
-                #     stop_training = self.validate()
-                #     self.last_valid_epoch = self._total_epochs
-                #
-                #     # --------------- change by hengyicai -------------------------
-                #     # run evaluation on the test data as well
-                #     test_opt = copy.deepcopy(self.opt)
-                #     test_opt['display_examples'] = False
-                #     test_opt['report_freq'] = 0
-                #     if self.test_world is None:
-                #         # we need to load the world now
-                #         self.test_world = _maybe_load_eval_world(self.agent, test_opt, 'test')
-                #     run_eval(self.test_world, test_opt, 'test', -1, write_log=True)
-                #     # --------------- change by hengyicai -------------------------
-                #     if stop_training:
-                #         break
-                # if (
-                #     self.save_time.time() > self.save_every_n_secs and
-                #     opt.get('model_file') and
-                #     is_primary_worker()
-                # ):
-                #     print("[ saving model checkpoint: {}.checkpoint".format(
-                #         opt['model_file']
-                #     ))
-                #     self.save_model('.checkpoint')
-                #     self.save_time.reset()
+                # TODO: Temp shut down evaluation and test
+                if (
+                    validate_time > self.val_every_n_secs or
+                    self._total_epochs - self.last_valid_epoch
+                        >= self.val_every_n_epochs
+                ):
+                    stop_training = self.validate()
+                    self.last_valid_epoch = self._total_epochs
+
+                    # # --------------- change by hengyicai -------------------------
+                    # # run evaluation on the test data as well
+                    # test_opt = copy.deepcopy(self.opt)
+                    # test_opt['display_examples'] = False
+                    # test_opt['report_freq'] = 0
+                    # if self.test_world is None:
+                    #     # we need to load the world now
+                    #     self.test_world = _maybe_load_eval_world(self.agent, test_opt, 'test')
+                    # run_eval(self.test_world, test_opt, 'test', -1, write_log=True)
+                    # --------------- change by hengyicai -------------------------
+                    if stop_training:
+                        break
+                if (
+                    self.save_time.time() > self.save_every_n_secs and
+                    opt.get('model_file') and
+                    is_primary_worker()
+                ):
+                    print("[ saving model checkpoint: {}.checkpoint".format(
+                        opt['model_file']
+                    ))
+                    self.save_model('.checkpoint')
+                    self.save_time.reset()
 
         if not self.saved and is_primary_worker():
             # save agent
