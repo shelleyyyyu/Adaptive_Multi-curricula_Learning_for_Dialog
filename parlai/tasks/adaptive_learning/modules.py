@@ -261,8 +261,7 @@ class PolicyNet_Transformer(nn.Module):
         self.last_ffn = FeedForward(action_dim*2, action_dim, hidden_sizes=(128, 64))
 
     def forward(self, state, history_mean_emb):
-        # print('PolicyNet_Transformer history_mean_emb', history_mean_emb.size())
-        # (*, 64, 300)
+        history_mean_emb = torch.mean(history_mean_emb, 1)
         pad_history_mean_emb = F.pad(input=history_mean_emb, pad=(0, 0, 0, 0, 0, 10-history_mean_emb.size()[0]), mode='constant', value=0) #(10,64,300)
         # print('PolicyNet_Transformer pad_history_mean_emb', pad_history_mean_emb.size())
         encoder_states = self.history_encoder(pad_history_mean_emb)

@@ -4,6 +4,7 @@ from parlai.agents.seq2seq.seq2seq import Seq2seqAgent
 from .criterions import LabelSmoothing, CrossEntropyLabelSmoothing
 from .helper import build_loss_desc, build_prob_desc, compute_batch_loss
 import torch.nn as nn
+from scipy.spatial import distance
 
 
 class AdaSeq2seqAgent(Seq2seqAgent):
@@ -187,19 +188,11 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         # print('self.cur_batch_input', cur_batch_input[0])
         cur_batch_input_emb = self.model.pretrain_embedding(cur_batch_input[0])
         if self.prev_batch_input is not None and len(batch.text_vec) == self.opt['batchsize']:
-            # print('='*20)
-            # Use mean_input_embed and self.prev_mean_input_emb calculate distance
-            # cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
-            # cos_sim_score = torch.mean(cos_sim).float()
-            # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
-            # print(self.prev_batch_input.size())
-            # print(cur_batch_input[0].size())
-            # print(self.model.pretrain_embedding)
             prev_batch_input_emb = self.model.pretrain_embedding(self.prev_batch_input)
-            # cur_batch_input_emb = self.model.pretrain_embedding(cur_batch_input[0])
-            # print(prev_batch_input_emb.size())
-            # print(cur_batch_input_emb.size())
-            margin_loss = -F.cosine_similarity(prev_batch_input_emb, cur_batch_input_emb).abs().mean()
+            prev_batch_input_emb_mean = torch.sum(torch.mean(prev_batch_input_emb, 0),0)
+            cur_batch_input_emb_mean = torch.sum(torch.mean(cur_batch_input_emb, 0),0)
+            margin_loss = -1 * distance.cosine(prev_batch_input_emb_mean, cur_batch_input_emb_mean)
+            # margin_loss = -F.cosine_similarity(prev_batch_input_emb, cur_batch_input_emb).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss

@@ -18,6 +18,7 @@ import os
 import math
 import json
 import copy
+import pickle
 import torch
 import random
 import numpy as np
@@ -495,11 +496,10 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
-                cur_batch_input_emb_mean = torch.mean(cur_batch_input_emb, 0)
-                self.history_mean_embed.append(cur_batch_input_emb_mean.detach())
+                self.history_mean_embed.append(cur_batch_input_emb.detach())
+
                 history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
-
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
@@ -844,6 +844,10 @@ class DefaultTeacher(FbDialogTeacher):
                 for task_name, task_val in self.sample_counter.items():
                     with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
                         f.write('\n'.join([str(item) for item in task_val]))
+
+            with open(teacher_path + '.mean.embedding.pkl', 'wb') as f:
+                if self.history_mean_embed is not None:
+                    pickle.dump(self.history_mean_embed, f)
 
             self.write_selections('p_selections', teacher_path)
             self.write_selections('c_selections', teacher_path)
