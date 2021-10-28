@@ -839,11 +839,11 @@ class DefaultTeacher(FbDialogTeacher):
                     # for convenience of working with jq, make sure there's a newline
                     handle.write('\n')
 
-            if self.count_sample:
-                # save sample count info
-                for task_name, task_val in self.sample_counter.items():
-                    with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
-                        f.write('\n'.join([str(item) for item in task_val]))
+            # if self.count_sample:
+            #     # save sample count info
+            #     for task_name, task_val in self.sample_counter.items():
+            #         with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
+            #             f.write('\n'.join([str(item) for item in task_val]))
 
             with open(teacher_path + '.mean.embedding.pkl', 'wb') as f:
                 if self.history_mean_embed is not None:
