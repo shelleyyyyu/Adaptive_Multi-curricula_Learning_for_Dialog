@@ -142,7 +142,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_dynamic_hdbscan_v3/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dynamic_hdbscan_transformer_v2/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -188,4 +188,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_kmeans combine_hdbscan_w2v_2 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=1; train_model seq2seq personachat_h3_dynamic_kmeans combine_hdbscan_w2v_2 11000 -1 0.2 30
