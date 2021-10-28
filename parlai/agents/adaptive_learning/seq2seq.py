@@ -103,6 +103,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 batch_loss = None
                 scores = None
                 margin_loss = None
+                cur_batch_input_emb = None
 
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
