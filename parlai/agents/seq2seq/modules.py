@@ -142,8 +142,7 @@ class Seq2seq(TorchGeneratorModel):
                 for x in incremental_state
             )
 
-    def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None,
-                bsz=None):
+    def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None, bsz=None):
         """
         Get output predictions from the model.
 
