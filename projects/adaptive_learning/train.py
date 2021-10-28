@@ -91,7 +91,7 @@ if __name__ == '__main__':
         reward_metric='total_metric',
         reward_metric_mode='max',
         save_after_valid=False,
-        margin_rate=0.01,
+        margin_rate=0.5,
         margin=0.5,
         fix_pad_length=64,
         policy_n_heads=6,
@@ -101,7 +101,8 @@ if __name__ == '__main__':
         policy_attention_dropout=0.1,
         policy_relu_dropout=0.1,
         policy_activation='relu',
-        count_sample=True
+        count_sample=True,
+        batch_size=8
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()
