@@ -102,7 +102,7 @@ if __name__ == '__main__':
         policy_relu_dropout=0.1,
         policy_activation='relu',
         count_sample=True,
-        batch_size=8
+        batch_size=4
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()
