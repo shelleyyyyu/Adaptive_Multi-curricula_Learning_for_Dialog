@@ -191,7 +191,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             prev_batch_input_emb = self.model.decoder.lt(self.prev_batch_input)
             prev_batch_input_emb_mean = torch.sum(torch.mean(prev_batch_input_emb, 0),0)
             cur_batch_input_emb_mean = torch.sum(torch.mean(cur_batch_input_emb, 0),0)
-            margin_loss = -1 * distance.cosine(prev_batch_input_emb_mean.detach().numpy(), cur_batch_input_emb_mean.detach().numpy())
+            margin_loss = -1 * distance.cosine(prev_batch_input_emb_mean.cpu().detach().numpy(), cur_batch_input_emb_mean.cpu().detach().numpy())
             # margin_loss = -F.cosine_similarity(prev_batch_input_emb, cur_batch_input_emb).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
