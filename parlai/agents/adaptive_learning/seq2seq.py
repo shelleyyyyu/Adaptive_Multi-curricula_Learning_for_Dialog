@@ -103,6 +103,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 batch_loss = None
                 scores = None
                 margin_loss = None
+                cur_batch_input_emb = None
 
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
@@ -196,7 +197,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
             # loss = generation_loss
-            margin_loss = -1
+            margin_loss = 0.0
 
         # print('compute_loss prev_emb', prev_emb)
         # print('compute_loss mean_input_embed', mean_input_embed)
