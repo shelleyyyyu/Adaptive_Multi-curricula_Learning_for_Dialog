@@ -216,6 +216,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.T = self.opt.get('T', 1000)
         self.c0 = self.opt.get('c0', 0.01)
         self.p = self.opt.get('p', 2)
+        self.fp16 = self.opt.get('fp16', False)
 
         # setup the timer
         self.log_every_n_secs = opt['log_every_n_secs'] if opt['log_every_n_secs'] > 0 \
@@ -223,11 +224,16 @@ class DefaultTeacher(FbDialogTeacher):
         self.action_log_time = Timer()
 
         self.move_to_cuda()
+        if self.fp16:
+            self.policy.half()
+            self.critic.half()
+
 
     def move_to_cuda(self):
         if self.use_cuda:
             self.policy.cuda()
             self.critic.cuda()
+
 
     @classmethod
     def optim_opts(self):
@@ -496,8 +502,11 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, cur_batch_input_emb = self._build_states(observations)
-                self.history_mean_embed.append(cur_batch_input_emb.detach())
-
+                if len(self.history_mean_embed) == 10:
+                    self.history_mean_embed.pop(0)
+                    self.history_mean_embed.append(cur_batch_input_emb.detach())
+                else:
+                    self.history_mean_embed.append(cur_batch_input_emb.detach())
                 history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
                 # print('history_mean_emb_tensor', history_mean_emb_tensor.size())
                 action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
