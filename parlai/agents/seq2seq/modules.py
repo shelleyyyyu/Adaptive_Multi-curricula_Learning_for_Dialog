@@ -99,6 +99,79 @@ class Seq2seq(TorchGeneratorModel):
             numsoftmax=numsoftmax, shared_weight=shared_weight,
             padding_idx=padding_idx)
 
+    def decode_greedy(self, encoder_states, bsz, maxlen):
+        """
+        Greedy search
+
+        :param int bsz:
+            Batch size. Because encoder_states is model-specific, it cannot
+            infer this automatically.
+
+        :param encoder_states:
+            Output of the encoder model.
+
+        :type encoder_states:
+            Model specific
+
+        :param int maxlen:
+            Maximum decoding length
+
+        :return:
+            pair (logits, choices) of the greedy decode
+
+        :rtype:
+            (FloatTensor[bsz, maxlen, vocab], LongTensor[bsz, maxlen])
+        """
+        xs = self._starts(bsz)
+        incr_state = None
+        logits = []
+        for _i in range(maxlen):
+            # todo, break early if all beams saw EOS
+            scores, incr_state, mean_input_embedding = self.decoder(xs, encoder_states, incr_state)
+            scores = scores[:, -1:, :]
+            scores = self.output(scores)
+            _, preds = scores.max(dim=-1)
+            logits.append(scores)
+            xs = torch.cat([xs, preds], dim=1)
+            # check if everyone has generated an end token
+            all_finished = ((xs == self.END_IDX).sum(dim=1) > 0).sum().item() == bsz
+            if all_finished:
+                break
+        logits = torch.cat(logits, 1)
+        return logits, xs, mean_input_embedding
+
+    def decode_forced(self, encoder_states, ys):
+        """
+        Decode with a fixed, true sequence, computing loss. Useful for
+        training, or ranking fixed candidates.
+
+        :param ys:
+            the prediction targets. Contains both the start and end tokens.
+
+        :type ys:
+            LongTensor[bsz, time]
+
+        :param encoder_states:
+            Output of the encoder. Model specific types.
+
+        :type encoder_states:
+            model specific
+
+        :return:
+            pair (logits, choices) containing the logits and MLE predictions
+
+        :rtype:
+            (FloatTensor[bsz, ys, vocab], LongTensor[bsz, ys])
+        """
+        bsz = ys.size(0)
+        seqlen = ys.size(1)
+        inputs = ys.narrow(1, 0, seqlen - 1)
+        inputs = torch.cat([self._starts(bsz), inputs], 1)
+        latent, _, mean_input_embedding = self.decoder(inputs, encoder_states)
+        logits = self.output(latent)
+        _, preds = logits.max(dim=2)
+        return logits, preds, mean_input_embedding
+
     def reorder_encoder_states(self, encoder_states, indices):
         """Reorder encoder states according to a new set of indices."""
         enc_out, hidden, attn_mask = encoder_states
@@ -143,7 +216,7 @@ class Seq2seq(TorchGeneratorModel):
             )
 
     def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None,
-                bsz=None, prev_emb=None):
+                bsz=None):
         """
         Get output predictions from the model.
 
@@ -196,7 +269,7 @@ class Seq2seq(TorchGeneratorModel):
                 maxlen or self.longest_label
             )
 
-        return scores, preds, encoder_states, mean_emb, prev_emb
+        return scores, preds, encoder_states, mean_emb
 
 
 class UnknownDropout(nn.Module):
@@ -471,7 +544,7 @@ class OutputLayer(nn.Module):
                 # no need for any transformation here
                 self.o2e = Identity()
 
-    def forward(self, input, mean_input_embedding):
+    def forward(self, input):
         """Compute scores from inputs.
 
         :param input: (bsz x seq_len x num_directions * hiddensize) tensor of
@@ -510,7 +583,7 @@ class OutputLayer(nn.Module):
         if self.padding_idx >= 0:
             scores[:, :, self.padding_idx] = -NEAR_INF
 
-        return scores, mean_input_embedding
+        return scores
 
 
 class AttentionLayer(nn.Module):

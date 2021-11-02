@@ -166,12 +166,9 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if batch.label_vec is None:
             raise ValueError('Cannot compute loss without a label.')
 
-        if self.prev_mean_input_emb is not None:
-            model_output = self.model(*self._model_input(batch), ys=batch.label_vec, prev_emb = self.prev_mean_input_emb.detach())
-        else:
-            model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
+        model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
 
-        scores, preds, encoder_states, mean_input_embed, prev_emb = model_output
+        scores, preds, encoder_states, mean_input_embed = model_output
         score_view = scores.view(-1, scores.size(-1))
         generation_loss = self.criterion(score_view, batch.label_vec.view(-1))
 
@@ -181,12 +178,8 @@ class AdaSeq2seqAgent(Seq2seqAgent):
 
         loss = generation_loss/target_tokens  # average loss per token
 
-        if prev_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
-            # print('='*20)
-            # Use mean_input_embed and self.prev_mean_input_emb calculate distance
-            # cos_sim = self.cos_sim(prev_emb, mean_input_embed).float()
-            # cos_sim_score = torch.mean(cos_sim).float()
-            # margin_loss = -torch.max(cos_sim_score, self.margin) + self.margin
+        if self.prev_mean_input_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
+            prev_emb = self.prev_mean_input_emb.detach()
             margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
             loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
         else:
