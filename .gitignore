@@ -139,3 +139,5 @@ models
 data
 report
 models_v2
+label.tsv
+vec.tsv

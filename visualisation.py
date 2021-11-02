@@ -1,0 +1,44 @@
+import numpy as np
+from scipy.spatial import distance
+import pickle
+import torch.nn.functional as F
+import torch
+embedding_1d = []
+embedding = []
+fname = '/Users/shelly/Desktop/laiye/project/data_selection/code/Adaptive_Multi-curricula_Learning_for_Dialog/models_v2/adaptive_learning_v0/ShellydeMacBook-Pro.local_gpu-1/seq2seq/personachat_h3_dynamic_kmeans/combine_v6/validby_min_ppl_per-1secs_per0.2epochs_patience-1_dict_maxtokens20000_minfreq-1_bsz16_beam1_50epochs_0.2dropout_T11000_ANTI_False.teacher.mean.embedding.pkl'
+with open(fname, 'rb') as pkl_file:
+    data = pickle.load(pkl_file)
+    print(len(data))
+    print(type(data[0]))
+    print((data[0]))
+    for d in data:
+        embedding.append(d)
+        embedding_1d.append(torch.sum(d, 0))
+    print(embedding[0].size())
+
+with open('vec.tsv', 'w', encoding='utf-8') as vec_file, open('label.tsv', 'w', encoding='utf-8') as label_file:
+    for idx, emb in enumerate(embedding_1d):
+        tmp_list = []
+        for e in np.array(emb):
+            tmp_list.append(str(e))
+        vec_file.write('\t'.join(tmp_list)+'\n')
+        label_file.write(str(idx)+'\n')
+
+
+for index in range(len(embedding)):
+    if index == len(embedding)-1:
+        continue
+    sim = F.cosine_similarity(embedding[index], embedding[index+1]).abs().mean()
+    print(index, '-', index+1, sim)
+
+print('-'*10)
+
+sim_array = []
+for index in range(len(embedding)):
+    if index == 0:
+        continue
+    sim = distance.cosine(embedding_1d[0], embedding_1d[index])
+    sim_array.append(float('%.6f'%sim))
+    print(0, '-', index, float('%.6f'%sim))
+
+print(np.argsort(sim_array))
