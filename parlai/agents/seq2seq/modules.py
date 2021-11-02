@@ -350,7 +350,7 @@ class RNNEncoder(nn.Module):
         # xes: Embedding
         xes = self.dropout(self.lt(xs))
         attn_mask = xs.ne(0)
-        mean_xes = torch.mean(xes, 0)
+        mean_xes = torch.mean(xes, 2)
         try:
             x_lens = torch.sum(attn_mask.int(), dim=1)
             xes = pack_padded_sequence(xes, x_lens, batch_first=True)

@@ -256,7 +256,7 @@ class PolicyNet_Transformer(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.history_encoder = _build_encoder(opt, reduction_type=None)
-        self.history_ffn = FeedForward(opt['policy_embedding_size'], action_dim, hidden_sizes=(128, 64))
+        self.history_ffn = FeedForward(opt['fix_pad_length'], action_dim, hidden_sizes=(128, 64))
         self.policy = FeedForward(state_dim, action_dim, hidden_sizes=(128, 64, 32))
         self.last_ffn = FeedForward(action_dim*2, action_dim, hidden_sizes=(128, 64))
 
