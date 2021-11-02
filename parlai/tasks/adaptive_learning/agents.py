@@ -18,6 +18,7 @@ import os
 import math
 import json
 import copy
+import pickle
 import torch
 import random
 import numpy as np
@@ -846,6 +847,10 @@ class DefaultTeacher(FbDialogTeacher):
                 for task_name, task_val in self.sample_counter.items():
                     with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
                         f.write('\n'.join([str(item) for item in task_val]))
+
+            with open(teacher_path + '.mean.embedding.pkl', 'wb') as f:
+                if self.history_mean_embed is not None:
+                    pickle.dump(self.history_mean_embed, f)
 
             self.write_selections('p_selections', teacher_path)
             self.write_selections('c_selections', teacher_path)
