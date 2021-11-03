@@ -95,7 +95,7 @@ if __name__ == '__main__':
         margin=0.5,
         fix_pad_length=64,
         policy_n_heads=8,
-        policy_n_layers=1,
+        policy_n_layers=3,
         policy_ffn_size=128,
         policy_embedding_size=64,
         policy_attention_dropout=0.1,
