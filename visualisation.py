@@ -6,7 +6,7 @@ import torch
 embedding_1d = []
 embedding = []
 
-def main(fname)
+def main(fname):
         with open(fname, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
             print(len(data))
