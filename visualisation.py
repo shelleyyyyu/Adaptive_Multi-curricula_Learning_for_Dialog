@@ -3,10 +3,12 @@ from scipy.spatial import distance
 import pickle
 import torch.nn.functional as F
 import torch
-embedding_1d = []
-embedding = []
+import sys
+
 
 def main(fname):
+        embedding_1d = []
+        embedding = []
         with open(fname, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
             print(len(data))
