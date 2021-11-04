@@ -11,9 +11,9 @@ def main(fname):
         embedding = []
         with open(fname, 'rb') as pkl_file:
             data = pickle.load(pkl_file)
-            print(len(data))
-            print(type(data[0]))
-            print((data[0]))
+            # print(len(data))
+            # print(type(data[0]))
+            # print((data[0]))
             for d in data:
                 embedding.append(d)
                 embedding_1d.append(torch.sum(d, 0))
