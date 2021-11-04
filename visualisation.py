@@ -17,12 +17,11 @@ def main(fname):
             for d in data:
                 embedding.append(d)
                 embedding_1d.append(torch.sum(d, 0))
-            print(embedding[0].size())
 
         with open('vec.tsv', 'w', encoding='utf-8') as vec_file, open('label.tsv', 'w', encoding='utf-8') as label_file:
             for idx, emb in enumerate(embedding_1d):
                 tmp_list = []
-                for e in np.array(emb):
+                for e in np.array(emb.cpu()):
                     tmp_list.append(str(e))
                 vec_file.write('\t'.join(tmp_list)+'\n')
                 label_file.write(str(idx)+'\n')
