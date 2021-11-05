@@ -13,7 +13,7 @@ def main(fname):
             data = pickle.load(pkl_file)
             print(len(data))
             print(type(data[0]))
-            print((data[0]).size()
+            print((data[0]).size())
             for d in data:
                 embedding.append(d)
                 embedding_1d.append(torch.sum(d, 0))
