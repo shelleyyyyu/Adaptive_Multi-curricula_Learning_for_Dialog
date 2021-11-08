@@ -916,6 +916,7 @@ class PersonachatH3DynamicTeacher(DefaultTeacher):
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)
 
+
 class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
     def __init__(self, opt, shared=None):
         opt = copy.deepcopy(opt)
@@ -930,6 +931,39 @@ class PersonachatH3DynamicKmeansTeacher(DefaultTeacher):
             )
         self.other_task_datafiles = other_task_datafiles
         super().__init__(opt, shared)
+
+
+class PersonachatH3DynamicDailyTeacher(DefaultTeacher):
+    def __init__(self, opt, shared=None):
+        opt = copy.deepcopy(opt)
+        assert 'subtasks' in opt, 'subtasks must be specified!'
+        subtasks_num = opt['subtasks'].split(':')
+        subtasks = [i for i in range(int(subtasks_num[1]), int(subtasks_num[2])+1)]
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_daily', str(subtasks[0]), sub_task_name= subtasks_num[0])
+        other_task_datafiles = []
+        for attr in subtasks[1:]:
+            other_task_datafiles.append(
+                _path(opt, 'personachat_history3_dynamic_daily', str(attr), sub_task_name= subtasks_num[0])
+            )
+        self.other_task_datafiles = other_task_datafiles
+        super().__init__(opt, shared)
+
+
+class PersonachatH3DynamicOpenTeacher(DefaultTeacher):
+    def __init__(self, opt, shared=None):
+        opt = copy.deepcopy(opt)
+        assert 'subtasks' in opt, 'subtasks must be specified!'
+        subtasks_num = opt['subtasks'].split(':')
+        subtasks = [i for i in range(int(subtasks_num[1]), int(subtasks_num[2])+1)]
+        opt['datafile'] = _path(opt, 'personachat_history3_dynamic_open', str(subtasks[0]), sub_task_name= subtasks_num[0])
+        other_task_datafiles = []
+        for attr in subtasks[1:]:
+            other_task_datafiles.append(
+                _path(opt, 'personachat_history3_dynamic_open', str(attr), sub_task_name= subtasks_num[0])
+            )
+        self.other_task_datafiles = other_task_datafiles
+        super().__init__(opt, shared)
+
 
 class PersonachatH3OriginalTeacher(FbDialogTeacher):
     def __init__(self, opt, shared=None):

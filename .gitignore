@@ -141,3 +141,5 @@ report
 models_v2
 label.tsv
 vec.tsv
+dict_info_daily
+dict_info_open

@@ -23,6 +23,10 @@ declare -A tasks=(
   ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
   ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
   ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
+  ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
+  ["personachat_h3_dynamic_open"]="adaptive_learning:personachat_h3_dynamic_open"
+  ["personachat_h3_dynamic_daily"]="adaptive_learning:personachat_h3_dynamic_daily"
+
 )
 
 declare -A subtasks_list=(
@@ -36,13 +40,16 @@ declare -A subtasks_list=(
   ["loss_of_transformer"]="loss_of_transformer"
   ["loss_of_hred"]="loss_of_hred"
   ["loss_of_dialogwae"]="loss_of_dialogwae"
-  #["combine"]="avg_nidf:intrep_word:lastuttsim:post_sim"
-  ["combine"]="0:37"
-  ["combine_v2"]="101:105"
+  ["combine_hdbscan_w2v_2"]="hbscan_word2vec_2_1441_B:0:1439"
+  ["combine_hdbscan_w2v_open_3"]="hbscan_word2vec_3_1600_B_open:0:1598"
+  ["combine_hdbscan_w2v_open_4"]="hbscan_word2vec_4_1042_B_open:0:1040"
+  ["combine_hdbscan_w2v_daily_5"]="hbscan_word2vec_5_2189_B_daily:0:2187"
+  ["combine_hdbscan_w2v_daily_6"]="hbscan_word2vec_6_1650_B_daily:0:1648"
+  ["combine_hdbscan_w2v_daily_8"]="hbscan_word2vec_8_1102_B_daily:0:1100"
 )
 
 declare -A bszs=(
-  ["seq2seq"]=128 #256
+  ["seq2seq"]=16 #256
   ["cvae"]=256
   ["transformer"]=128
   ["hred"]=200
@@ -58,8 +65,8 @@ declare -A lrs=(
 )
 
 #---------------- main arguments -----------------#
-validation_metric_mode=min
-validation_metric=ppl
+validation_metric_mode=max
+validation_metric='dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri'
 dict_maxtokens=20000
 dict_minfreq=-1
 reward_metric=total_metric
@@ -120,13 +127,13 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dynamic_hdbscan_transformer_daily_6/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
   fi
 
-  file_name=validby_${validation_metric_mode}_${validation_metric}_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
+  file_name=validby_${validation_metric_mode}_all_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
   # shellcheck disable=SC2155
   local train_args=$(common_args " --model ${model} --task ${task} --subtasks ${subtasks} --learningrate ${lrs[$model_name]} --batchsize ${bszs[$model_name]} --validation_every_n_secs ${validation_every_n_secs} --validation_every_n_epochs ${validation_every_n_epochs}  --num_epochs ${num_epochs} ")
 
@@ -166,5 +173,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0;
-train_model seq2seq personachat_h3_dynamic combine_v2 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_daily combine_hdbscan_w2v_daily_6 11000 -1 0.2 30
