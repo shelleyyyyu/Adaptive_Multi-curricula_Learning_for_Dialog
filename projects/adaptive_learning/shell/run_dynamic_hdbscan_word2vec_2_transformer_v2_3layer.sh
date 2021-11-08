@@ -125,7 +125,7 @@ function train_model() {
     mkdir -p "${model_dir}"
   fi
 
-  file_name=validby_all_${validation_metric}_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
+  file_name=validby_${validation_metric_mode}_all_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
   # shellcheck disable=SC2155
   local train_args=$(common_args " --model ${model} --task ${task} --subtasks ${subtasks} --learningrate ${lrs[$model_name]} --batchsize ${bszs[$model_name]} --validation_every_n_secs ${validation_every_n_secs} --validation_every_n_epochs ${validation_every_n_epochs}  --num_epochs ${num_epochs} ")
 
