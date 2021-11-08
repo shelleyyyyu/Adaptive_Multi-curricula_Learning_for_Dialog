@@ -387,19 +387,25 @@ class TrainLoop():
         # --------------- change by hengyicai -------------------------
 
         # check which metric to look at
-        if '/' in opt['validation_metric']:
+
+        validation_metric_list = opt['validation_metric'].split('/')
+        if len(validation_metric_list) == 2:
             # if you are multitasking and want your validation metric to be
             # a metric specific to a subtask, specify your validation metric
-            # as -vmt subtask/metric
+            # as -vmt） subtask/metric
             subtask = opt['validation_metric'].split('/')[0]
             validation_metric = opt['validation_metric'].split('/')[1]
             new_valid = valid_report['tasks'][subtask][validation_metric]
-        else:
+        elif len(validation_metric_list) == 1:
             new_valid = valid_report[opt['validation_metric']]
+        else:
+            valid_metrics = opt['validation_metric'].split('/')
+            new_valid = 0
+            for valid in valid_metrics:
+                new_valid += valid_report[valid]
 
         # check if this is the best validation so far
-        if (self.best_valid is None or
-                self.valid_optim * new_valid > self.valid_optim * self.best_valid):
+        if (self.best_valid is None or self.valid_optim * new_valid > self.valid_optim * self.best_valid):
             print('[ new best {}: {}{} ]'.format(
                 opt['validation_metric'], new_valid,
                 ' (previous best was {})'.format(self.best_valid)
