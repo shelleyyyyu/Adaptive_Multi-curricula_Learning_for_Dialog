@@ -67,7 +67,7 @@ declare -A lrs=(
 #---------------- main arguments -----------------#
 validation_metric_mode=max
 validation_metric='dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri'
-dict_maxtokens=20000000000
+dict_maxtokens=100000
 dict_minfreq=-1
 reward_metric=total_metric
 reward_metric_mode=max
