@@ -127,7 +127,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_dynamic_hdbscan_transformer_daily_8/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dailydynamic_hdbscan/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"

@@ -192,6 +192,7 @@ class CvaeAgent(TorchGeneratorWithDialogEvalAgent):
             self.add_metric('kl_loss_cnt', 0)
             self.add_metric('bow_loss', 0.0)
             self.add_metric('bow_loss_cnt', 0)
+            self.add_metric('margin_loss', 0)
 
         self.special_tokens = [self.NULL_IDX, self.START_IDX, self.END_IDX, self.dict[self.dict.unk_token]]
 
@@ -202,6 +203,7 @@ class CvaeAgent(TorchGeneratorWithDialogEvalAgent):
         self.metrics['kl_loss_cnt'] = 0
         self.metrics['bow_loss'] = 0.0
         self.metrics['bow_loss_cnt'] = 0
+        self.metrics['margin_loss'] = 0
 
     def report(self):
         base = super().report()
@@ -336,35 +338,35 @@ class CvaeAgent(TorchGeneratorWithDialogEvalAgent):
         bow_loss = torch.sum(bow_loss) / batch.label_vec.size(0)
         return bow_loss
 
-    def compute_loss(self, batch, return_output=False):
-        if batch.label_vec is None:
-            raise ValueError('Cannot compute loss without a label.')
-        model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
-        scores, preds, _, kl_loss, bow_logits = model_output
-
-        score_view = scores.view(-1, scores.size(-1))
-        loss = self.criterion(score_view, batch.label_vec.view(-1))
-        # save loss to metrics
-        notnull = batch.label_vec.ne(self.NULL_IDX)
-        target_tokens = notnull.long().sum().item()
-        correct = ((batch.label_vec == preds) * notnull).sum().item()
-        self.metrics['correct_tokens'] += correct
-        self.metrics['nll_loss'] += loss.item()
-        self.metrics['num_tokens'] += target_tokens
-        loss /= target_tokens  # average loss per token
-
-        # kl_loss and bow_loss
-        self.metrics['kl_loss'] += kl_loss.item()
-        self.metrics['kl_loss_cnt'] += 1
-        bow_loss = self._compute_bow_loss(bow_logits, batch)
-        self.metrics['bow_loss'] += bow_loss.item()
-        self.metrics['bow_loss_cnt'] += 1
-
-        loss = loss + self._compute_kl_loss(kl_loss) + bow_loss
-        if return_output:
-            return (loss, model_output)
-        else:
-            return loss
+    # def compute_loss(self, batch, return_output=False):
+    #     if batch.label_vec is None:
+    #         raise ValueError('Cannot compute loss without a label.')
+    #     model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
+    #     scores, preds, _, kl_loss, bow_logits = model_output
+    #
+    #     score_view = scores.view(-1, scores.size(-1))
+    #     loss = self.criterion(score_view, batch.label_vec.view(-1))
+    #     # save loss to metrics
+    #     notnull = batch.label_vec.ne(self.NULL_IDX)
+    #     target_tokens = notnull.long().sum().item()
+    #     correct = ((batch.label_vec == preds) * notnull).sum().item()
+    #     self.metrics['correct_tokens'] += correct
+    #     self.metrics['nll_loss'] += loss.item()
+    #     self.metrics['num_tokens'] += target_tokens
+    #     loss /= target_tokens  # average loss per token
+    #
+    #     # kl_loss and bow_loss
+    #     self.metrics['kl_loss'] += kl_loss.item()
+    #     self.metrics['kl_loss_cnt'] += 1
+    #     bow_loss = self._compute_bow_loss(bow_logits, batch)
+    #     self.metrics['bow_loss'] += bow_loss.item()
+    #     self.metrics['bow_loss_cnt'] += 1
+    #
+    #     loss = loss + self._compute_kl_loss(kl_loss) + bow_loss
+    #     if return_output:
+    #         return (loss, model_output)
+    #     else:
+    #         return loss
 
     def eval_step(self, batch):
         """Evaluate a single batch of examples."""

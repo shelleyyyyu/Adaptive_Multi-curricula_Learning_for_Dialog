@@ -355,37 +355,36 @@ class TransformerEncoder(nn.Module):
         if positions is None:
             positions = (mask.cumsum(dim=1, dtype=torch.int64) - 1).clamp_(min=0)
         tensor = self.embeddings(input)
+
         if self.embeddings_scale:
             tensor = tensor * np.sqrt(self.dim)
-
         tensor = tensor + self.position_embeddings(positions).expand_as(tensor)
 
         if self.n_segments >= 1:
             if segments is None:
                 segments = torch.zeros_like(input)
             tensor = tensor + self.segment_embeddings(segments)
-
         if self.variant == 'xlm':
             tensor = _normalize(tensor, self.norm_embeddings)
-
         # --dropout on the embeddings
         tensor = self.dropout(tensor)
 
         tensor *= mask.unsqueeze(-1).type_as(tensor)
+        mean_xes = torch.mean(tensor, 2)
         for i in range(self.n_layers):
             tensor = self.layers[i](tensor, mask)
 
         if self.reduction_type == 'first':
-            return tensor[:, 0, :]
+            return tensor[:, 0, :], mean_xes
         elif self.reduction_type == 'max':
-            return tensor.max(dim=1)[0]
+            return tensor.max(dim=1)[0], mean_xes
         elif self.reduction_type == 'mean':
             divisor = mask.float().sum(dim=1).unsqueeze(-1).clamp(min=1).type_as(tensor)
             output = tensor.sum(dim=1) / divisor
-            return output
+            return output, mean_xes
         elif self.reduction_type == 'none' or self.reduction_type is None:
             output = tensor
-            return output, mask
+            return output, mask, mean_xes
         else:
             raise ValueError(
                 "Can't handle --reduction-type {}".format(self.reduction_type)
@@ -519,7 +518,7 @@ class TransformerDecoder(nn.Module):
             ))
 
     def forward(self, input, encoder_state, incr_state=None):
-        encoder_output, encoder_mask = encoder_state
+        encoder_output, encoder_mask, mean_input_embedding = encoder_state
 
         seq_len = input.size(1)
         positions = input.new(seq_len).long()
@@ -536,7 +535,7 @@ class TransformerDecoder(nn.Module):
         for layer in self.layers:
             tensor = layer(tensor, encoder_output, encoder_mask)
 
-        return tensor, None
+        return tensor, None, mean_input_embedding
 
 
 class TransformerDecoderLayer(nn.Module):
@@ -667,6 +666,135 @@ class TransformerGeneratorModel(TorchGeneratorModel):
         # project back to vocabulary
         output = F.linear(tensor, self.embeddings.weight)
         return output
+
+    def decode_greedy(self, encoder_states, bsz, maxlen):
+        """
+        Greedy search
+
+        :param int bsz:
+            Batch size. Because encoder_states is model-specific, it cannot
+            infer this automatically.
+
+        :param encoder_states:
+            Output of the encoder model.
+
+        :type encoder_states:
+            Model specific
+
+        :param int maxlen:
+            Maximum decoding length
+
+        :return:
+            pair (logits, choices) of the greedy decode
+
+        :rtype:
+            (FloatTensor[bsz, maxlen, vocab], LongTensor[bsz, maxlen])
+        """
+        xs = self._starts(bsz)
+        incr_state = None
+        logits = []
+        for _i in range(maxlen):
+            # todo, break early if all beams saw EOS
+            scores, incr_state, mean_input_embedding = self.decoder(xs, encoder_states, incr_state)
+            scores = scores[:, -1:, :]
+            scores = self.output(scores)
+            _, preds = scores.max(dim=-1)
+            logits.append(scores)
+            xs = torch.cat([xs, preds], dim=1)
+            # check if everyone has generated an end token
+            all_finished = ((xs == self.END_IDX).sum(dim=1) > 0).sum().item() == bsz
+            if all_finished:
+                break
+        logits = torch.cat(logits, 1)
+        return logits, xs, mean_input_embedding
+
+    def decode_forced(self, encoder_states, ys):
+        """
+        Decode with a fixed, true sequence, computing loss. Useful for
+        training, or ranking fixed candidates.
+
+        :param ys:
+            the prediction targets. Contains both the start and end tokens.
+
+        :type ys:
+            LongTensor[bsz, time]
+
+        :param encoder_states:
+            Output of the encoder. Model specific types.
+
+        :type encoder_states:
+            model specific
+
+        :return:
+            pair (logits, choices) containing the logits and MLE predictions
+
+        :rtype:
+            (FloatTensor[bsz, ys, vocab], LongTensor[bsz, ys])
+        """
+        bsz = ys.size(0)
+        seqlen = ys.size(1)
+        inputs = ys.narrow(1, 0, seqlen - 1)
+        inputs = torch.cat([self._starts(bsz), inputs], 1)
+        latent, _, mean_input_embedding = self.decoder(inputs, encoder_states)
+        logits = self.output(latent)
+        _, preds = logits.max(dim=2)
+        return logits, preds, mean_input_embedding
+
+    def forward(self, *xs, ys=None, cand_params=None, prev_enc=None, maxlen=None,
+                bsz=None):
+        """
+        Get output predictions from the model.
+
+        :param xs:
+            input to the encoder
+        :type xs:
+            LongTensor[bsz, seqlen]
+        :param ys:
+            Expected output from the decoder. Used
+            for teacher forcing to calculate loss.
+        :type ys:
+            LongTensor[bsz, outlen]
+        :param prev_enc:
+            if you know you'll pass in the same xs multiple times, you can pass
+            in the encoder output from the last forward pass to skip
+            recalcuating the same encoder output.
+        :param maxlen:
+            max number of tokens to decode. if not set, will use the length of
+            the longest label this model has seen. ignored when ys is not None.
+        :param bsz:
+            if ys is not provided, then you must specify the bsz for greedy
+            decoding.
+
+        :return:
+            (scores, candidate_scores, encoder_states) tuple
+
+            - scores contains the model's predicted token scores.
+              (FloatTensor[bsz, seqlen, num_features])
+            - candidate_scores are the score the model assigned to each candidate.
+              (FloatTensor[bsz, num_cands])
+            - encoder_states are the output of model.encoder. Model specific types.
+              Feed this back in to skip encoding on the next call.
+        """
+        if ys is not None:
+            # TODO: get rid of longest_label
+            # keep track of longest label we've ever seen
+            # we'll never produce longer ones than that during prediction
+            self.longest_label = max(self.longest_label, ys.size(1))
+
+        # use cached encoding if available
+        encoder_states = prev_enc if prev_enc is not None else self.encoder(*xs)
+
+        if ys is not None:
+            # use teacher forcing
+            scores, preds, mean_emb = self.decode_forced(encoder_states, ys)
+        else:
+            scores, preds, mean_emb = self.decode_greedy(
+                encoder_states,
+                bsz,
+                maxlen or self.longest_label
+            )
+
+        return scores, preds, encoder_states, mean_emb
 
 
 class BasicAttention(nn.Module):

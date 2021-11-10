@@ -11,7 +11,6 @@ from projects.adaptive_learning.utils import set_teacher_args
 from projects.adaptive_learning.utils import TENSORBOARD_METRICS
 
 # locale.setlocale(locale.LC_ALL, 'en_US')
-PARLAI_HOME = os.getenv('PARLAI_HOME')
 
 OVERRIDE = {
     "datatype": 'train',
@@ -21,8 +20,8 @@ OVERRIDE = {
     "batch_sort": True,
     "validation_every_n_secs": -1,
     "validation_every_n_epochs": 0.5,
-    "validation_metric": 'ppl',
-    "validation_metric_mode": 'min',
+    "validation_metric": 'ppl/dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri',#'ppl',
+    "validation_metric_mode": 'max',
     "validation_patience": 12,
     "log_every_n_secs": 1,
     "shuffle": False,
@@ -31,9 +30,9 @@ OVERRIDE = {
     "num_epochs": 20,
     "display_examples": False,
     "history_size": -1,
-    "text_truncate": 128,
-    "label_truncate": 128,
-    "truncate": 128,
+    "text_truncate": 16,
+    "label_truncate": 16,
+    "truncate": 16,
     "gpu": 0,
     "batch_sort_field": 'label',
     "pytorch_teacher_batch_sort": False,
@@ -42,6 +41,9 @@ OVERRIDE = {
     "c0": 0.01,
     "p": 2,
     "beam_size": 1,
+    "margin_rate": 0.01,
+    "margin": 0.5,
+    "fix_pad_length": 16
 }
 
 if __name__ == '__main__':
@@ -52,7 +54,7 @@ if __name__ == '__main__':
         task='adaptive_learning:personachat_h3_sparse',
         subtasks='avg_nidf',
         model='parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent',
-        model_file=os.path.join(PARLAI_HOME, 'models/adaptive_learning/personachat_h3_sparse'),
+        model_file='./models/adaptive_learning/personachat_h3_sparse',
         dict_lower=True,
         dict_tokenizer='split',
         embedding_type='glove',
@@ -75,6 +77,16 @@ if __name__ == '__main__':
         reward_metric='total_metric',
         reward_metric_mode='max',
         save_after_valid=False,
+        margin_rate=0.5,
+        margin=0.5,
+        fix_pad_length=16,
+        policy_n_heads=8,
+        policy_n_layers=6,
+        policy_ffn_size=128,
+        policy_embedding_size=16,
+        policy_attention_dropout=0.1,
+        policy_relu_dropout=0.1,
+        policy_activation='relu'
     )
     parser.set_defaults(**OVERRIDE)
     opt = parser.parse_args()

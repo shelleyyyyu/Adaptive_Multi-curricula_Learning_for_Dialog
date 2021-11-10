@@ -40,6 +40,19 @@ class AdaTransformerAgent(TorchGeneratorWithDialogEvalAgent):
         """Set up model."""
         super().__init__(opt, shared)
         self.id = 'AdaTransformer'
+        self.prev_mean_input_emb = None
+        self.margin = nn.Parameter(torch.Tensor([opt['margin']]))
+        self.margin.requires_grad = False
+        self.margin_rate = opt['margin_rate']
+
+        if torch.cuda.is_available():
+            self.margin = self.margin.cuda()
+        if not shared:
+            self.add_metric('margin_loss', 0)
+
+    def reset_metrics(self):
+        super().reset_metrics()
+        self.metrics['margin_loss'] = 0
 
     def build_criterion(self):
         # self.criterion = nn.CrossEntropyLoss(
@@ -127,12 +140,13 @@ class AdaTransformerAgent(TorchGeneratorWithDialogEvalAgent):
         self.zero_grad()
 
         try:
-            loss, model_output = self.compute_loss(batch, return_output=True)
+            #loss, model_output = self.compute_loss(batch, return_output=True)
+            loss, margin_loss, mean_input_embed, model_output = self.compute_loss(batch, return_output=True)
             self.metrics['loss'] += loss.item()
             self.backward(loss)
             self.update_params()
-            return loss, model_output, \
-                   compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX)
+            return loss, model_output, compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX), margin_loss, mean_input_embed
+
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):
@@ -172,13 +186,17 @@ class AdaTransformerAgent(TorchGeneratorWithDialogEvalAgent):
         if is_training:
             train_return = self.train_step(batch)
             if train_return is not None:
-                _, model_output, batch_loss = train_return
+                #_, model_output, batch_loss = train_return
+                _, model_output, batch_loss, margin_loss, mean_input_embed = train_return
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
+                mean_input_embed = mean_input_embed.detach()
             else:
                 batch_loss = None
                 scores = None
+                margin_loss = None
+                mean_input_embed = None
 
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
@@ -191,6 +209,8 @@ class AdaTransformerAgent(TorchGeneratorWithDialogEvalAgent):
                 reply['train_report'] = train_report
                 reply['loss_desc'] = loss_desc
                 reply['prob_desc'] = prob_desc
+                reply['margin_loss'] = margin_loss
+                reply['mean_input_embed'] = mean_input_embed
             return batch_reply
         else:
             with torch.no_grad():
@@ -303,3 +323,44 @@ class AdaTransformerAgent(TorchGeneratorWithDialogEvalAgent):
         text = [self._v2t(p) for p in preds] if preds is not None else None
         context = [obs['text'] for obs in batch.observations]
         return Output(text, cand_choices), label_text, context
+
+    def compute_loss(self, batch, return_output=False):
+        """
+        Computes and returns the loss for the given batch. Easily overridable for
+        customized loss functions.
+
+        If return_output is True, the full output from the call to self.model()
+        is also returned, via a (loss, model_output) pair.
+        """
+        if batch.label_vec is None:
+            raise ValueError('Cannot compute loss without a label.')
+        model_output = self.model(*self._model_input(batch), ys=batch.label_vec)
+        scores, preds, encoder_states, mean_input_embed = model_output
+        score_view = scores.view(-1, scores.size(-1))
+        generation_loss = self.criterion(score_view, batch.label_vec.view(-1))
+        # save loss to metrics
+        notnull = batch.label_vec.ne(self.NULL_IDX)
+        target_tokens = notnull.long().sum().item()
+        correct = ((batch.label_vec == preds) * notnull).sum().item()
+        self.metrics['correct_tokens'] += correct
+        self.metrics['nll_loss'] += generation_loss.item()
+        self.metrics['num_tokens'] += target_tokens
+        generation_loss /= target_tokens  # average loss per token
+
+        if self.prev_mean_input_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
+            prev_emb = self.prev_mean_input_emb.detach()
+            margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
+            loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
+        else:
+            margin_loss = -1
+            loss = generation_loss
+
+        if len(batch.text_vec) == self.opt['batchsize']:
+            self.prev_mean_input_emb = mean_input_embed
+
+        self.metrics['margin_loss'] += margin_loss
+
+        if return_output:
+            return (loss, margin_loss, mean_input_embed, model_output)
+        else:
+            return loss

@@ -81,6 +81,7 @@ class Encoder(nn.Module):
 
         batch_size, seq_len, emb_size = inputs.size()
         inputs = F.dropout(inputs, self.dropout, self.training)
+        mean_xes = torch.mean(inputs, 2)
 
         need_pack = False
         if input_lens is not None and need_pack:
@@ -107,7 +108,7 @@ class Encoder(nn.Module):
             gauss_noise = gVar(torch.normal(means=torch.zeros(enc.size()), std=self.noise_radius))
             enc = enc + gauss_noise
 
-        return enc, hids
+        return enc, hids, mean_xes
 
 
 class ContextEncoder(nn.Module):
@@ -138,10 +139,12 @@ class ContextEncoder(nn.Module):
 
     def forward(self, context, context_lens, utt_lens, floors, noise=False):
         batch_size, max_context_len, max_utt_len = context.size()
+
         utts = context.view(-1, max_utt_len)
 
         utt_lens = utt_lens.view(-1)
-        utt_encs, _ = self.utt_encoder(utts, utt_lens)
+        utt_encs, _, mean_input_embedding = self.utt_encoder(utts, utt_lens)
+
         utt_encs = utt_encs.view(batch_size, max_context_len, -1)
 
         floor_one_hot = gVar(torch.zeros(floors.numel(), 2))
@@ -167,7 +170,7 @@ class ContextEncoder(nn.Module):
         if noise and self.noise_radius > 0:
             gauss_noise = gVar(torch.normal(means=torch.zeros(enc.size()), std=self.noise_radius))
             enc = enc + gauss_noise
-        return enc
+        return enc, mean_input_embedding
 
 
 class Variation(nn.Module):
@@ -424,6 +427,14 @@ class DialogWAE(nn.Module):
         self.discriminator.apply(self.init_weights)
         self.config = config
         # self.criterion_ce = nn.CrossEntropyLoss()
+        self.prev_mean_input_emb = None
+        self.margin = nn.Parameter(torch.Tensor([config['margin']]))
+        self.margin.requires_grad = False
+        self.margin_rate = config['margin_rate']
+
+        if torch.cuda.is_available():
+            self.margin = self.margin.cuda()
+
 
     def init_weights(self, m):
         if isinstance(m, nn.Linear):
@@ -455,15 +466,14 @@ class DialogWAE(nn.Module):
         return kl_div
 
     def compute_loss_AE(self, context, context_lens, utt_lens, floors, response, res_lens):
-        c = self.context_encoder(context, context_lens, utt_lens, floors)
+        c, mean_input_embed = self.context_encoder(context, context_lens, utt_lens, floors)
 
         vhred_kl_loss = -1
         bow_loss = -1
-
         if self.config.get('hred', False):
             output = self.decoder(c, None, response[:, :-1], (res_lens - 1))
         elif self.config.get('vhred', False):
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
             vhred_post_z, vhred_post_mu, vhred_post_logsigma = self.vhred_posterior(torch.cat((x, c), 1))
             vhred_priori_z, vhred_priori_mu, vhred_priori_logsigma = self.vhred_priori(c)
             output = self.decoder(torch.cat((vhred_post_z, c), 1), None, response[:, :-1], (res_lens - 1))
@@ -473,7 +483,7 @@ class DialogWAE(nn.Module):
             bow_logits = self.vhred_bow_project(torch.cat([c, vhred_priori_z], dim=1))
             bow_loss = self._compute_bow_loss(bow_logits, response)
         else:
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
             z = self.sample_code_post(x, c)
             c_z = torch.cat((z, c), 1)
             if self.config.get('norm_z', False):
@@ -498,7 +508,7 @@ class DialogWAE(nn.Module):
 
         return {'masked_output': masked_output, 'masked_target': masked_target, 'target_tokens': target_tokens,
                 'correct_tokens': correct, 'num_tokens': target_tokens, 'scores': output, 'preds': preds,
-                'vhred_kl_loss': vhred_kl_loss, 'bow_loss': bow_loss}
+                'vhred_kl_loss': vhred_kl_loss, 'bow_loss': bow_loss, 'mean_input_embed': mean_input_embed}
 
     @staticmethod
     def anneal_weight(step):
@@ -528,12 +538,24 @@ class DialogWAE(nn.Module):
         preds = loss_dict['preds']
         vhred_kl_loss = loss_dict['vhred_kl_loss']
         bow_loss = loss_dict['bow_loss']
+        mean_input_embed = loss_dict['mean_input_embed']
 
         optimizer_AE.zero_grad()
         loss = criterion_ce(masked_output / self.temp, masked_target)
         sum_loss = loss.item()
         loss /= target_tokens
         avg_loss = loss.item()
+
+
+        if self.prev_mean_input_emb is not None and context.size(0) == self.config['batchsize'] and self.training:
+            prev_emb = self.prev_mean_input_emb.detach()
+            margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
+            avg_loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * loss
+        else:
+            margin_loss = -1
+
+        if self.training and context.size(0) == self.config['batchsize']:
+             self.prev_mean_input_emb = mean_input_embed
 
         params_to_clip = list(self.context_encoder.parameters()) + list(self.decoder.parameters())
         if vhred_kl_loss != -1 and self.config.get('vhred', False) \
@@ -552,7 +574,8 @@ class DialogWAE(nn.Module):
 
         return {'nll_loss': sum_loss, 'avg_loss': avg_loss, 'correct_tokens': correct,
                 'num_tokens': target_tokens, 'scores': output, 'preds': preds,
-                'vhred_kl_loss': vhred_kl_loss, 'bow_loss': bow_loss}
+                'vhred_kl_loss': vhred_kl_loss, 'bow_loss': bow_loss,
+                'margin_loss': margin_loss, 'mean_input_embed': mean_input_embed}
 
     def train_G(self, context, context_lens, utt_lens, floors, response, res_lens, optimizer_G):
         # self.context_encoder.eval()
@@ -562,8 +585,8 @@ class DialogWAE(nn.Module):
             p.requires_grad = False
 
         with torch.no_grad():
-            c = self.context_encoder(context, context_lens, utt_lens, floors)
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            c, _ = self.context_encoder(context, context_lens, utt_lens, floors)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
         # -----------------posterior samples ---------------------------
         z_post = self.sample_code_post(x.detach(), c.detach())
 
@@ -592,8 +615,8 @@ class DialogWAE(nn.Module):
         batch_size = context.size(0)
 
         with torch.no_grad():
-            c = self.context_encoder(context, context_lens, utt_lens, floors)
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            c, _ = self.context_encoder(context, context_lens, utt_lens, floors)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
 
         post_z = self.sample_code_post(x, c)
         errD_post = torch.mean(self.discriminator(torch.cat((post_z.detach(), c.detach()), 1)))
@@ -625,10 +648,10 @@ class DialogWAE(nn.Module):
         # self.discriminator.eval()
         # self.decoder.eval()
 
-        c = self.context_encoder(context, context_lens, utt_lens, floors)
+        c, _ = self.context_encoder(context, context_lens, utt_lens, floors)
 
         if not self.config.get('hred', False) and not self.config.get('vhred', False):
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
             post_z = self.sample_code_post(x, c)
             prior_z = self.sample_code_prior(c)
             errD_post = torch.mean(self.discriminator(torch.cat((post_z, c), 1)))
@@ -646,7 +669,7 @@ class DialogWAE(nn.Module):
         if self.config.get('hred', False):
             dec_input = c
         elif self.config.get('vhred', False):
-            x, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
+            x, _, _ = self.utt_encoder(response[:, 1:], res_lens - 1)
             vhred_post_z, vhred_post_mu, vhred_post_logsigma = self.vhred_posterior(torch.cat((x, c), 1))
             vhred_priori_z, vhred_priori_mu, vhred_priori_logsigma = self.vhred_priori(c)
             vhred_kl_loss = self.normal_kl_div(vhred_post_mu, vhred_post_logsigma, vhred_priori_mu,
@@ -696,7 +719,7 @@ class DialogWAE(nn.Module):
         # self.context_encoder.eval()
         # self.decoder.eval()
 
-        c = self.context_encoder(context, context_lens, utt_lens, floors)
+        c, _ = self.context_encoder(context, context_lens, utt_lens, floors)
         if self.config.get('hred', False):
             dec_input = c
         elif self.config.get('vhred', False):

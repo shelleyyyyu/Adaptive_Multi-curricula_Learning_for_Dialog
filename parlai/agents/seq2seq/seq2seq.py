@@ -179,6 +179,8 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
         """Set up model."""
         super().__init__(opt, shared)
         self.id = 'Seq2Seq'
+        if not shared:
+            self.add_metric('margin_loss', 0)
 
     def build_model(self, states=None):
         """Initialize model, override to change model setup."""
@@ -262,6 +264,10 @@ class Seq2seqAgent(TorchGeneratorWithDialogEvalAgent):
         if 'longest_label' in states:
             self.model.longest_label = states['longest_label']
         return states
+
+    def reset_metrics(self):
+        super().reset_metrics()
+        self.metrics['margin_loss'] = 0
 
     def eval_step(self, batch):
         """Evaluate a single batch of examples."""

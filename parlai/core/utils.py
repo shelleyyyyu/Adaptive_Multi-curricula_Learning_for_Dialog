@@ -989,7 +989,7 @@ def padded_tensor(items, pad_idx=0, use_cuda=False, left_padded=False,
     return output, lens
 
 
-def padded_3d(tensors, pad_idx=0, use_cuda=0, dtype=TORCH_LONG, fp16friendly=False):
+def padded_3d(tensors, pad_idx=0, use_cuda=0, dtype=TORCH_LONG, fp16friendly=False, fix_pad_length=None):
     """
     Make 3D padded tensor for list of lists of 1D tensors or lists.
 
@@ -1007,7 +1007,10 @@ def padded_3d(tensors, pad_idx=0, use_cuda=0, dtype=TORCH_LONG, fp16friendly=Fal
     """
     a = len(tensors)
     b = max(len(row) for row in tensors)
-    c = max(len(item) for row in tensors for item in row)
+    if fix_pad_length is not None:
+        c = fix_pad_length
+    else:
+        c = max(len(item) for row in tensors for item in row)
 
     # pad empty tensors
     if fp16friendly and c % 8 != 0:

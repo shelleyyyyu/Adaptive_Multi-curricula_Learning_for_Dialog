@@ -1,6 +1,7 @@
 import random
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from parlai.core.torch_generator_agent import Output
 from parlai.core.utils import round_sigfigs, warn_once, padded_tensor, \
@@ -192,12 +193,12 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
         if any('text_vec' in ex for ex in exs):
             _xs = [ex.get('text_vec', [self.EMPTY]) for ex in exs]
             xs = padded_3d(
-                _xs, self.NULL_IDX, self.use_cuda, fp16friendly=self.opt.get('fp16'),
+                _xs, self.NULL_IDX, self.use_cuda, fp16friendly=self.opt.get('fp16'), fix_pad_length=self.opt.get('fix_pad_length')
             )
             x_lens = (xs != self.NULL_IDX).sum(dim=-1)  # bsz, context_len
             context_lens = (x_lens != 0).sum(dim=-1)  # bsz
             floors, _ = padded_tensor([make_floor(c_len.item()) for c_len in context_lens],
-                                      use_cuda=self.use_cuda)
+                                      use_cuda=self.use_cuda, fix_pad_length=self.opt.get('padded_tensor'))
             # We do not sort on the xs which in the shape of [bsz, context_len, utt_len] is this agent
             # if sort:
             #     sort = False  # now we won't sort on labels
@@ -325,6 +326,7 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
             self.add_metric('kl_loss_cnt', 0)
             self.add_metric('bow_loss', 0.0)
             self.add_metric('bow_loss_cnt', 0)
+            self.add_metric('margin_loss', 0)
 
         if (
                 # only build an optimizer if we're training
@@ -547,13 +549,16 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
             # noinspection PyTypeChecker
             train_return = self.train_step(batch)
             if train_return is not None:
-                model_output, batch_loss = train_return
+                # model_output, batch_loss = train_return
+                model_output, batch_loss, margin_loss, mean_input_embed = train_return
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
+                mean_input_embed = mean_input_embed.detach()
             else:
                 batch_loss = None
-                scores = None
+                scores = Nonemargin_loss = None
+                mean_input_embed = None
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
             #       (learning to teach)
@@ -566,6 +571,8 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
                 reply['train_report'] = train_report
                 reply['loss_desc'] = loss_desc
                 reply['prob_desc'] = prob_desc
+                reply['margin_loss'] = margin_loss
+                reply['mean_input_embed'] = mean_input_embed
             return batch_reply
         else:
             with torch.no_grad():
@@ -609,7 +616,7 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
             # self.backward(loss)
             # self.update_params()
             # with torch.autograd.detect_anomaly():
-            loss_AE = self.model.train_AE(batch.text_vec, batch.context_lens, batch.text_lengths,
+            loss_AE  = self.model.train_AE(batch.text_vec, batch.context_lens, batch.text_lengths,
                                           batch.floors, batch.label_vec, batch.label_lengths,
                                           self.optimizer, self.criterion, self._number_training_updates)
             self._number_training_updates += 1
@@ -617,6 +624,9 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
             self.metrics['nll_loss'] += loss_AE['nll_loss']
             self.metrics['num_tokens'] += loss_AE['num_tokens']
             self.metrics['loss'] += loss_AE['avg_loss']
+            margin_loss = loss_AE['margin_loss']
+            self.metrics['margin_loss'] += margin_loss
+            mean_input_embed = loss_AE['mean_input_embed']
 
             if self.opt.get('hred', False):
                 pass
@@ -643,8 +653,8 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
                         self.metrics['loss_D'] += loss_D['train_loss_D']
 
             model_output = (loss_AE['scores'], loss_AE['preds'])
-            return model_output, compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX,
-                                                    drop_first=True)
+            return model_output, compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX, drop_first=True) , margin_loss, mean_input_embed
+
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):

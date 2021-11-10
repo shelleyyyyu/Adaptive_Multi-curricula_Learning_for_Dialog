@@ -5,23 +5,54 @@ set -x
 
 FLAG=0
 
-declare -p models=(
+declare -A models=(
+  ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
+  ["cvae"]="parlai.agents.adaptive_learning.cvae:AdaCvaeAgent"
+  ["transformer"]="parlai.agents.adaptive_learning.transformer:AdaTransformerAgent"
+  ["hred"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
   ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
 )
 
-declare -p tasks=(
+declare -A tasks=(
+  ["personachat_h3"]="adaptive_learning:personachat_h3"
+  ["personachat_h3_sparse"]="adaptive_learning:personachat_h3_sparse"
+  ["opensub_h3_sparse_small"]="adaptive_learning:opensub_h3_sparse_small"
+  ["daily_dialog"]="adaptive_learning:daily_dialog"
+  ["personachat_h3_original"]="adaptive_learning:personachat_h3_original"
+  ["personachat_h3_sparse_original"]="adaptive_learning:personachat_h3_sparse_original"
+  ["opensub_h3_sparse_small_original"]="adaptive_learning:opensub_h3_sparse_small_original"
+  ["daily_dialog_original"]="adaptive_learning:daily_dialog_original"
+  ["personachat_h3_dynamic"]="adaptive_learning:personachat_h3_dynamic"
   ["personachat_h3_dynamic_kmeans"]="adaptive_learning:personachat_h3_dynamic_kmeans"
 )
 
-declare -p subtasks_list=(
-  ["combine_v6"]="hbscan_word2vec_2_1441_B:0:4"
+declare -A subtasks_list=(
+  ["specificity"]="avg_nidf"
+  ["repetition"]="intrep_word"
+  ["context-relatedness"]="lastuttsim"
+  ["continuity"]="post_sim"
+  ["original"]="original"
+  ["loss_of_seq2seq"]="loss_of_seq2seq"
+  ["loss_of_cvae"]="loss_of_cvae"
+  ["loss_of_transformer"]="loss_of_transformer"
+  ["loss_of_hred"]="loss_of_hred"
+  ["loss_of_dialogwae"]="loss_of_dialogwae"
+  ["combine_hdbscan_w2v_2"]="hbscan_word2vec_2_1441_B:0:1439"
 )
 
-declare -p bszs=(
-  ["dialogwae"]=16
+declare -A bszs=(
+  ["seq2seq"]=16 #256
+  ["cvae"]=256
+  ["transformer"]=128
+  ["hred"]=200
+  ["dialogwae"]=200
 )
 
-declare -p lrs=(
+declare -A lrs=(
+  ["seq2seq"]=5e-4
+  ["cvae"]=5e-4
+  ["transformer"]=5e-4
+  ["hred"]=1
   ["dialogwae"]=1
 )
 
@@ -66,8 +97,6 @@ function train_model() {
   local validation_every_n_secs=$5
   local validation_every_n_epochs=$6
   local num_epochs=$7
-  local margin=$8
-  local margin_rate=$9
 
   local model=${models[$model_name]}
   if [[ "${attr}" == "original" ]]; then
@@ -90,13 +119,13 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_v2/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dynamic_hdbscan_transformer_v2_3layers/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
   fi
 
-  file_name=validby_${validation_metric_mode}_${validation_metric}_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
+  file_name=validby_${validation_metric_mode}_all_per${validation_every_n_secs}secs_per${validation_every_n_epochs}epochs_patience${validation_patience}_dict_maxtokens${dict_maxtokens}_minfreq${dict_minfreq}_bsz${bszs[$model_name]}_beam${beam_size}_${num_epochs}epochs_${dropout}dropout
   # shellcheck disable=SC2155
   local train_args=$(common_args " --model ${model} --task ${task} --subtasks ${subtasks} --learningrate ${lrs[$model_name]} --batchsize ${bszs[$model_name]} --validation_every_n_secs ${validation_every_n_secs} --validation_every_n_epochs ${validation_every_n_epochs}  --num_epochs ${num_epochs} ")
 
@@ -130,14 +159,10 @@ function train_model() {
     train_script=train_transformer.py
     train_args=${train_args}" --n_layers ${n_layers} --n_heads ${n_heads}"
   fi
-  train_args=${train_args}" --margin ${margin} --margin_rate ${margin_rate}"
 
-
-
-  python ./projects/adaptive_learning/${train_script} ${train_args}
+  nohup python ./projects/adaptive_learning/${train_script} ${train_args} &>${model_file}.log &
   cd -
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=-1;
-train_model dialogwae personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50 0.5 0.05
+export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_kmeans combine_hdbscan_w2v_2 11000 -1 0.2 30

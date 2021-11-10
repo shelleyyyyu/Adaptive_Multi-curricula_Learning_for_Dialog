@@ -29,7 +29,7 @@ OVERRIDE = {
     "validation_every_n_secs": 30,
     "validation_every_n_epochs": -1,
     "validation_metric": 'ppl/dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri',#'ppl',
-    "validation_metric_mode": 'min',
+    "validation_metric_mode": 'max',
     "validation_patience": 12,
     "log_every_n_secs": 1,
     "shuffle": False,

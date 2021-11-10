@@ -160,40 +160,114 @@ class CVAE(TorchGeneratorModel):
 
         # use cached encoding if available
         encoder_states = prev_enc if prev_enc is not None else self.encoder(*xs)
-
+        # return encoder_output, _transpose_hidden_state(hidden), attn_mask, mean_xes
+        mean_input_embedding = encoder_states[-1]
         x_hidden = encoder_states[1]
         if isinstance(x_hidden, tuple):
             x_hidden = x_hidden[0][:, -1, :]
 
         latent_z_priori, mean_priori, logvar_priori = self.priori(x_hidden)
         if ys is not None:
-            _, y_hidden, _ = self.encoder(ys)
+            _, y_hidden, _, _ = self.encoder(ys)
             if isinstance(y_hidden, tuple):
                 y_hidden = y_hidden[0][:, -1, :]
             latent_z_posterior, mean_posterior, logvar_posterior = self.posterior(x_hidden + y_hidden)
             kl_loss = self.normal_kl_div(mean_posterior, logvar_posterior, mean_priori, logvar_priori)
             latent_init_hidden = self.init_dec_hidden(latent_z_posterior).view(bsz, self.numlayers, -1)
             if isinstance(encoder_states[1], tuple):
-                encoder_states = encoder_states[0], (encoder_states[1][0] + latent_init_hidden, encoder_states[1][1]), encoder_states[2]
+                encoder_states = encoder_states[0], (encoder_states[1][0] + latent_init_hidden, encoder_states[1][1]), encoder_states[2], mean_input_embedding
             else:
-                encoder_states = encoder_states[0], encoder_states[1] + latent_init_hidden, encoder_states[2]
+                encoder_states = encoder_states[0], encoder_states[1] + latent_init_hidden, encoder_states[2], mean_input_embedding
             # use teacher forcing
-            scores, preds = self.decode_forced(encoder_states, ys)
+            scores, preds, mean_emb = self.decode_forced(encoder_states, ys)
         else:
             kl_loss = -1
             latent_init_hidden = self.init_dec_hidden(latent_z_priori).view(bsz, self.numlayers, -1)
             if isinstance(encoder_states[1], tuple):
-                encoder_states = encoder_states[0], (encoder_states[1][0] + latent_init_hidden, encoder_states[1][1]), encoder_states[2]
+                encoder_states = encoder_states[0], (encoder_states[1][0] + latent_init_hidden, encoder_states[1][1]), encoder_states[2], mean_input_embedding
             else:
-                encoder_states = encoder_states[0], encoder_states[1] + latent_init_hidden, encoder_states[2]
-            scores, preds = self.decode_greedy(
+                encoder_states = encoder_states[0], encoder_states[1] + latent_init_hidden, encoder_states[2], mean_input_embedding
+            scores, preds, mean_emb = self.decode_greedy(
                 encoder_states,
                 bsz,
                 maxlen or self.longest_label
             )
 
         bow_logits = self.bow_project(torch.cat([x_hidden, latent_z_priori], dim=1))
-        return scores, preds, encoder_states, kl_loss, bow_logits
+        return scores, preds, encoder_states, kl_loss, bow_logits, mean_emb
+
+    def decode_greedy(self, encoder_states, bsz, maxlen):
+        """
+        Greedy search
+
+        :param int bsz:
+            Batch size. Because encoder_states is model-specific, it cannot
+            infer this automatically.
+
+        :param encoder_states:
+            Output of the encoder model.
+
+        :type encoder_states:
+            Model specific
+
+        :param int maxlen:
+            Maximum decoding length
+
+        :return:
+            pair (logits, choices) of the greedy decode
+
+        :rtype:
+            (FloatTensor[bsz, maxlen, vocab], LongTensor[bsz, maxlen])
+        """
+        xs = self._starts(bsz)
+        incr_state = None
+        logits = []
+        for _i in range(maxlen):
+            # todo, break early if all beams saw EOS
+            scores, incr_state, mean_input_embedding = self.decoder(xs, encoder_states, incr_state)
+            scores = scores[:, -1:, :]
+            scores = self.output(scores)
+            _, preds = scores.max(dim=-1)
+            logits.append(scores)
+            xs = torch.cat([xs, preds], dim=1)
+            # check if everyone has generated an end token
+            all_finished = ((xs == self.END_IDX).sum(dim=1) > 0).sum().item() == bsz
+            if all_finished:
+                break
+        logits = torch.cat(logits, 1)
+        return logits, xs, mean_input_embedding
+
+    def decode_forced(self, encoder_states, ys):
+        """
+        Decode with a fixed, true sequence, computing loss. Useful for
+        training, or ranking fixed candidates.
+
+        :param ys:
+            the prediction targets. Contains both the start and end tokens.
+
+        :type ys:
+            LongTensor[bsz, time]
+
+        :param encoder_states:
+            Output of the encoder. Model specific types.
+
+        :type encoder_states:
+            model specific
+
+        :return:
+            pair (logits, choices) containing the logits and MLE predictions
+
+        :rtype:
+            (FloatTensor[bsz, ys, vocab], LongTensor[bsz, ys])
+        """
+        bsz = ys.size(0)
+        seqlen = ys.size(1)
+        inputs = ys.narrow(1, 0, seqlen - 1)
+        inputs = torch.cat([self._starts(bsz), inputs], 1)
+        latent, _, mean_input_embedding = self.decoder(inputs, encoder_states)
+        logits = self.output(latent)
+        _, preds = logits.max(dim=2)
+        return logits, preds, mean_input_embedding
 
     def reorder_encoder_states(self, encoder_states, indices):
         """Reorder encoder states according to a new set of indices."""
@@ -316,6 +390,7 @@ class RNNEncoder(nn.Module):
         xs = self.input_dropout(xs)
         xes = self.dropout(self.lt(xs))
         attn_mask = xs.ne(0)
+        mean_xes = torch.mean(xes, 2)
         try:
             x_lens = torch.sum(attn_mask.int(), dim=1)
             xes = pack_padded_sequence(xes, x_lens, batch_first=True)
@@ -343,7 +418,7 @@ class RNNEncoder(nn.Module):
             else:
                 hidden = hidden.view(-1, self.dirs, bsz, self.hsz).sum(1)
 
-        return encoder_output, _transpose_hidden_state(hidden), attn_mask
+        return encoder_output, _transpose_hidden_state(hidden), attn_mask, mean_xes
 
 
 class RNNDecoder(nn.Module):
@@ -396,7 +471,7 @@ class RNNDecoder(nn.Module):
                 the model's OutputLayer for a final softmax.
             - hidden_state depends on the choice of RNN
         """
-        enc_state, enc_hidden, attn_mask = encoder_output
+        enc_state, enc_hidden, attn_mask, mean_input_embedding = encoder_output
         # in case of multi gpu, we need to transpose back out the hidden state
         attn_params = (enc_state, attn_mask)
 
@@ -443,7 +518,7 @@ class RNNDecoder(nn.Module):
                 output.append(o)
             output = torch.cat(output, dim=1).to(xes.device)
 
-        return output, _transpose_hidden_state(new_hidden)
+        return output, _transpose_hidden_state(new_hidden), mean_input_embedding
 
 
 class Identity(nn.Module):

@@ -67,7 +67,7 @@ declare -A lrs=(
 #---------------- main arguments -----------------#
 validation_metric_mode=max
 validation_metric='dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri'
-dict_maxtokens=20000000000
+dict_maxtokens=20000
 dict_minfreq=-1
 reward_metric=total_metric
 reward_metric_mode=max
@@ -127,7 +127,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_dynamic_hdbscan_transformer_open_3/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_dailydynamic_hdbscan/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -173,4 +173,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=1; train_model seq2seq personachat_h3_dynamic_open combine_hdbscan_w2v_open_3 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=0; train_model seq2seq personachat_h3_dynamic_daily combine_hdbscan_w2v_daily_8 11000 -1 0.2 30

@@ -96,6 +96,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
                 scores, *_ = model_output
                 scores = scores.detach()
                 batch_loss = batch_loss.detach()
+                mean_input_embed = mean_input_embed.detach()
             else:
                 batch_loss = None
                 scores = None
@@ -176,8 +177,12 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         notnull = batch.label_vec.ne(self.NULL_IDX)
         target_tokens = notnull.long().sum().item()
         correct = ((batch.label_vec == preds) * notnull).sum().item()
+        # save loss to metrics
+        self.metrics['correct_tokens'] += correct
+        self.metrics['nll_loss'] += generation_loss.item()
+        self.metrics['num_tokens'] += target_tokens
 
-        loss = generation_loss/target_tokens  # average loss per token
+        generation_loss /= target_tokens  # average loss per token
 
         if self.prev_mean_input_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
             prev_emb = self.prev_mean_input_emb.detach()
@@ -186,16 +191,15 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         else:
             # loss = generation_loss
             margin_loss = -1
+            loss = generation_loss
 
         # print('compute_loss prev_emb', prev_emb)
         # print('compute_loss mean_input_embed', mean_input_embed)
 
         if len(batch.text_vec) == self.opt['batchsize']:
              self.prev_mean_input_emb = mean_input_embed
-        # save loss to metrics
-        self.metrics['correct_tokens'] += correct
-        self.metrics['nll_loss'] += loss.item()
-        self.metrics['num_tokens'] += target_tokens
+
+        self.metrics['margin_loss'] += margin_loss
 
         if return_output:
             return (loss, margin_loss, mean_input_embed, model_output)
