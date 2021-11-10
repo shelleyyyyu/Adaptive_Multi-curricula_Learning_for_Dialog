@@ -50,12 +50,11 @@ declare -A subtasks_list=(
 
 declare -A bszs=(
   ["seq2seq"]=16 #256
-  ["cvae"]=256
-  ["transformer"]=128
-  ["hred"]=200
-  ["dialogwae"]=200
+  ["cvae"]=16
+  ["transformer"]=16
+  ["hred"]=16
+  ["dialogwae"]=16
 )
-
 declare -A lrs=(
   ["seq2seq"]=5e-4
   ["cvae"]=5e-4

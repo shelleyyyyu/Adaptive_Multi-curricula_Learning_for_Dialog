@@ -56,12 +56,12 @@ declare -A bszs=(
   ["dialogwae"]=200
 )
 
-declare -A lrs=(
-  ["seq2seq"]=5e-4
-  ["cvae"]=5e-4
-  ["transformer"]=5e-4
-  ["hred"]=1
-  ["dialogwae"]=1
+declare -A bszs=(
+  ["seq2seq"]=16 #256
+  ["cvae"]=16
+  ["transformer"]=16
+  ["hred"]=16
+  ["dialogwae"]=16
 )
 
 #---------------- main arguments -----------------#
