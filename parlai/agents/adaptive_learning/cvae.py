@@ -56,10 +56,11 @@ class AdaCvaeAgent(CvaeAgent):
         try:
             #loss, model_output = self.compute_loss(batch, return_output=True)
             loss, margin_loss, mean_input_embed, model_output = self.compute_loss(batch, return_output=True)
+            batch_loss = compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX)
             self.metrics['loss'] += loss.item()
             self.backward(loss)
             self.update_params()
-            return loss, model_output, compute_batch_loss(model_output, batch, self.batch_criterion, self.NULL_IDX), margin_loss, mean_input_embed
+            return loss, model_output, batch_loss, margin_loss, mean_input_embed
         except RuntimeError as e:
             # catch out of memory exceptions during fwd/bck (skip batch)
             if 'out of memory' in str(e):
