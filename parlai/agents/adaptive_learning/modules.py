@@ -429,7 +429,7 @@ class DialogWAE(nn.Module):
         # self.criterion_ce = nn.CrossEntropyLoss()
         self.prev_mean_input_emb = None
         # self.margin = nn.Parameter(torch.Tensor([config['margin']]))
-        self.margin.requires_grad = False
+        # self.margin.requires_grad = False
         self.margin_rate = config['margin_rate']
 
         # if torch.cuda.is_available():
