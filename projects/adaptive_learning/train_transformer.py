@@ -30,9 +30,9 @@ OVERRIDE = {
     "num_epochs": 20,
     "display_examples": False,
     "history_size": -1,
-    "text_truncate": 64,
-    "label_truncate": 64,
-    "truncate": 64,
+    "text_truncate": 32,
+    "label_truncate": 32,
+    "truncate": 32,
     "gpu": 0,
     "batch_sort_field": 'label',
     "pytorch_teacher_batch_sort": False,
@@ -43,7 +43,7 @@ OVERRIDE = {
     "beam_size": 1,
     "margin_rate": 0.01,
     "margin": 0.5,
-    "fix_pad_length": 64
+    "fix_pad_length": 32
 }
 
 if __name__ == '__main__':
@@ -83,11 +83,11 @@ if __name__ == '__main__':
         save_after_valid=False,
         margin_rate=0.5,
         margin=0.5,
-        fix_pad_length=64,
+        fix_pad_length=32,
         policy_n_heads=8,
         policy_n_layers=6,
         policy_ffn_size=128,
-        policy_embedding_size=64,
+        policy_embedding_size=32,
         policy_attention_dropout=0.1,
         policy_relu_dropout=0.1,
         policy_activation='relu',
