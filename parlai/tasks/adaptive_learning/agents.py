@@ -476,25 +476,8 @@ class DefaultTeacher(FbDialogTeacher):
         word_entropy_uni = prev_valid_report.get('word_entropy_uni', 0) / 100
         word_entropy_bi = prev_valid_report.get('word_entropy_bi', 0) / 100
         word_entropy_tri = prev_valid_report.get('word_entropy_tri', 0) / 100
-        print('1',train_step)
-        print('2',nll_loss)
-        print('3',margin_loss)
-        print('4',bleu)
-        print('5',valid_nll_loss)
-        print('6',dist_1_ratio)
-        print('7',dist_2_ratio)
-        print('8',dist_3_ratio)
-        print('9',embed_avg)
-        print('10',embed_greedy)
-        print('11',embed_extrema)
-        print('12',embed_coh)
-        print('13',intra_dist_1)
-        print('14',intra_dist_2)
-        print('15',intra_dist_3)
-        print('16',response_length)
-        print('17',word_entropy_uni)
-        print('18',word_entropy_bi)
-        print('19',word_entropy_tri)
+        if margin_loss == None:
+            margin_loss = -1.0
         states = torch.FloatTensor([train_step, nll_loss, margin_loss, bleu, valid_nll_loss,
                                     dist_1_ratio, dist_2_ratio, dist_3_ratio,
                                     embed_avg, embed_greedy, embed_extrema, embed_coh,
