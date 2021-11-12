@@ -402,7 +402,8 @@ class TrainLoop():
             valid_metrics = opt['validation_metric'].split('/')
             new_valid = 0
             for valid in valid_metrics:
-                new_valid += valid_report[valid]
+                if valid in valid_report:
+                    new_valid += valid_report[valid]
 
         # check if this is the best validation so far
         if (self.best_valid is None or self.valid_optim * new_valid > self.valid_optim * self.best_valid):
