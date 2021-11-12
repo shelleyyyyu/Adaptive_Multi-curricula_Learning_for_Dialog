@@ -64,6 +64,15 @@ declare -A bszs=(
   ["dialogwae"]=16
 )
 
+declare -A lrs=(
+  ["seq2seq"]=5e-4
+  ["cvae"]=5e-4
+  ["transformer"]=5e-4
+  ["hred"]=1
+  ["dialogwae"]=1
+)
+
+
 #---------------- main arguments -----------------#
 validation_metric_mode=max
 validation_metric='dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri'
