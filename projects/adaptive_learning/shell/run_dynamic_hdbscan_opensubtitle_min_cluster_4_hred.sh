@@ -50,14 +50,6 @@ declare -A subtasks_list=(
 
 declare -A bszs=(
   ["seq2seq"]=16 #256
-  ["cvae"]=256
-  ["transformer"]=128
-  ["hred"]=200
-  ["dialogwae"]=200
-)
-
-declare -A bszs=(
-  ["seq2seq"]=16 #256
   ["cvae"]=16
   ["transformer"]=16
   ["hred"]=16
@@ -72,11 +64,10 @@ declare -A lrs=(
   ["dialogwae"]=1
 )
 
-
 #---------------- main arguments -----------------#
 validation_metric_mode=max
 validation_metric='dist_1_ratio/dist_2_ratio/dist_3_ratio/intra_dist_1/intra_dist_2/intra_dist_3/embed_avg/embed_extrema/embed_greedy/embed_coh/word_entropy_uni/word_entropy_bi/word_entropy_tri'
-dict_maxtokens=20000000000
+dict_maxtokens=20000
 dict_minfreq=-1
 reward_metric=total_metric
 reward_metric_mode=max
@@ -182,4 +173,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=1; train_model hred personachat_h3_dynamic_open combine_hdbscan_w2v_open_4 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=0; train_model hred personachat_h3_dynamic_open combine_hdbscan_w2v_open_4 11000 -1 0.2 30
