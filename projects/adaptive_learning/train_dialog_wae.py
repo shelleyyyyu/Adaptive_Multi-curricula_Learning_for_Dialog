@@ -80,7 +80,7 @@ if __name__ == '__main__':
         margin_rate=0.5,
         margin=0.5,
         fix_pad_length=16,
-        policy_n_heads=8,
+        policy_n_heads=10,
         policy_n_layers=6,
         policy_ffn_size=128,
         policy_embedding_size=16,
