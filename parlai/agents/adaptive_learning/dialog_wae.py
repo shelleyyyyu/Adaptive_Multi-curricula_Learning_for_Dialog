@@ -557,7 +557,8 @@ class DialogWaeAgent(TorchGeneratorWithDialogEvalAgent):
                 mean_input_embed = mean_input_embed.detach()
             else:
                 batch_loss = None
-                scores = Nonemargin_loss = None
+                scores = None
+                margin_loss = None
                 mean_input_embed = None
             self.replies['batch_reply'] = None
             # TODO: add more model state or training state for sampling the next batch
