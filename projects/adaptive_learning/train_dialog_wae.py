@@ -83,7 +83,7 @@ if __name__ == '__main__':
         policy_n_heads=10,
         policy_n_layers=6,
         policy_ffn_size=128,
-        policy_embedding_size=16,
+        policy_embedding_size=300,
         policy_attention_dropout=0.1,
         policy_relu_dropout=0.1,
         policy_activation='relu'
