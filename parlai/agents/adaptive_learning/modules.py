@@ -88,7 +88,7 @@ class Encoder(nn.Module):
             input_lens_sorted, indices = input_lens.sort(descending=True)
             inputs_sorted = inputs.index_select(0, indices)
             inputs = pack_padded_sequence(inputs_sorted, input_lens_sorted.data.tolist(), batch_first=True)
-        mean_xes = torch.mean(inputs, 2)
+        mean_xes = torch.mean(inputs, 0)
 
         init_hidden = gVar(torch.zeros(self.n_layers * (1 + self.bidirectional), batch_size, self.hidden_size))
         if self.rnn_class == 'lstm':
