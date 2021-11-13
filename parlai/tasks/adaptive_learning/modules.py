@@ -256,7 +256,7 @@ class PolicyNet_Transformer(nn.Module):
         self.state_dim = state_dim
         self.action_dim = action_dim
         self.history_encoder = _build_encoder(opt, reduction_type=None)
-        if opt.get('hred', False):
+        if 'hred' in opt:
             self.history_ffn = FeedForward(300, action_dim, hidden_sizes=(128, 64))
         else:
             self.history_ffn = FeedForward(opt['fix_pad_length'], action_dim, hidden_sizes=(128, 64))
