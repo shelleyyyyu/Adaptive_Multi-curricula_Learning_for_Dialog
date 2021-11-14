@@ -6,7 +6,7 @@ set -x
 FLAG=0
 
 declare -p models=(
-  ["dialogwae"]="parlai.agents.adaptive_learning.dialog_wae:DialogWaeAgent"
+  ["seq2seq"]="parlai.agents.adaptive_learning.seq2seq:AdaSeq2seqAgent"
 )
 
 declare -p tasks=(
@@ -18,11 +18,11 @@ declare -p subtasks_list=(
 )
 
 declare -p bszs=(
-  ["dialogwae"]=16
+  ["seq2seq"]=16
 )
 
 declare -p lrs=(
-  ["dialogwae"]=1
+  ["seq2seq"]=1
 )
 
 #---------------- main arguments -----------------#
@@ -140,4 +140,4 @@ function train_model() {
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
 export CUDA_VISIBLE_DEVICES=-1;
-train_model dialogwae personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50 0.5 0.05
+train_model seq2seq personachat_h3_dynamic_kmeans combine_v6 11000 -1 0.2 50 0.5 0.05
