@@ -63,7 +63,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.random_policy = opt.get('random_policy', False)
         self.count_sample = opt.get('count_sample', False)
         self.anti = opt.get('anti', False)
-        #self.history_mean_embed = []
+        self.history_mean_embed = []
 
         if self.random_policy:
             random.seed(17)
@@ -137,7 +137,7 @@ class DefaultTeacher(FbDialogTeacher):
         self.action_dim = len(self.tasks)
 
         if not shared:
-            self.policy = PolicyNet_MLP(self.state_dim, self.action_dim)#PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)# PolicyNet_MLP(self.state_dim, self.action_dim)
+            self.policy = PolicyNet_Transformer(self.opt, self.state_dim, self.action_dim)# PolicyNet_MLP(self.state_dim, self.action_dim)
             self.critic = CriticNet(self.state_dim, self.action_dim)
 
             init_teacher = get_init_teacher(opt, shared)
@@ -501,10 +501,10 @@ class DefaultTeacher(FbDialogTeacher):
             if not self.random_policy:
                 with torch.no_grad():
                     current_states, margin_loss, mean_input_embed = self._build_states(observations)
-                # if mean_input_embed is not None:
-                #     self.history_mean_embed.append(mean_input_embed.detach())
-                #history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
-                action_probs = self.policy(current_states)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
+                if mean_input_embed is not None:
+                    self.history_mean_embed.append(mean_input_embed.detach())
+                history_mean_emb_tensor = torch.stack(self.history_mean_embed[:10], dim=0)
+                action_probs = self.policy(current_states, history_mean_emb_tensor)#torch.unsqueeze(mean_input_embed.detach(), 0))#history_mean_emb_tensor)
                 sample_from = Categorical(action_probs[0])
                 action = sample_from.sample()
                 # action = torch.argmax(action_probs)
@@ -845,9 +845,9 @@ class DefaultTeacher(FbDialogTeacher):
                     with open(teacher_path + '.sample_count.{}'.format(task_name), 'w', encoding='utf-8') as f:
                         f.write('\n'.join([str(item) for item in task_val]))
 
-            # with open(teacher_path + '.mean.embedding.pkl', 'wb') as f:
-            #     if self.history_mean_embed is not None:
-            #         pickle.dump(self.history_mean_embed, f)
+            with open(teacher_path + '.mean.embedding.pkl', 'wb') as f:
+                if self.history_mean_embed is not None:
+                    pickle.dump(self.history_mean_embed, f)
 
             self.write_selections('p_selections', teacher_path)
             self.write_selections('c_selections', teacher_path)

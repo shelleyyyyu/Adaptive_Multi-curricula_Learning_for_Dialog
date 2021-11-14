@@ -184,14 +184,14 @@ class AdaSeq2seqAgent(Seq2seqAgent):
 
         generation_loss /= target_tokens  # average loss per token
 
-        if self.prev_mean_input_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
-            prev_emb = self.prev_mean_input_emb.detach()
-            margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
-            loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
-        else:
+        # if self.prev_mean_input_emb is not None and len(batch.text_vec) == self.opt['batchsize']:
+        #     prev_emb = self.prev_mean_input_emb.detach()
+        #     margin_loss = -F.cosine_similarity(prev_emb, mean_input_embed).abs().mean()
+        #     loss = self.margin_rate * margin_loss + (1 - self.margin_rate) * generation_loss
+        # else:
             # loss = generation_loss
-            margin_loss = -1
-            loss = generation_loss
+        margin_loss = -1
+        loss = generation_loss
 
         # print('compute_loss prev_emb', prev_emb)
         # print('compute_loss mean_input_embed', mean_input_embed)
@@ -199,7 +199,7 @@ class AdaSeq2seqAgent(Seq2seqAgent):
         if len(batch.text_vec) == self.opt['batchsize']:
              self.prev_mean_input_emb = mean_input_embed
 
-        self.metrics['margin_loss'] += margin_loss
+        #self.metrics['margin_loss'] += margin_loss
 
         if return_output:
             return (loss, margin_loss, mean_input_embed, model_output)
