@@ -43,7 +43,6 @@ declare -A subtasks_list=(
   ["combine_hdbscan_w2v_2"]="hbscan_word2vec_2_1441_B:0:1439"
   ["combine_hdbscan_w2v_open_3"]="hbscan_word2vec_3_1600_B_open:0:1598"
   ["combine_hdbscan_w2v_open_4"]="hbscan_word2vec_4_1042_B_open:0:1040"
-  ["combine_hdbscan_w2v_daily_2"]="hbscan_word2vec_2_8784_B_daily:0:2187"
   ["combine_hdbscan_w2v_daily_5"]="hbscan_word2vec_5_2189_B_daily:0:2187"
   ["combine_hdbscan_w2v_daily_6"]="hbscan_word2vec_6_1650_B_daily:0:1648"
   ["combine_hdbscan_w2v_daily_8"]="hbscan_word2vec_8_1102_B_daily:0:1100"
@@ -128,7 +127,7 @@ function train_model() {
   #fi
 
   # shellcheck disable=SC2155
-  local model_dir=./models_daily_2/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
+  local model_dir=./models_daily/adaptive_learning_v${FLAG}/"$(hostname)"_gpu${CUDA_VISIBLE_DEVICES}/${model_name}/${task_name}/${real_attr}
 
   if [[ ! -d "$model_dir" ]]; then
     mkdir -p "${model_dir}"
@@ -174,4 +173,4 @@ function train_model() {
 }
 
 # train_model  MODEL_NAME  TASK_NAME  SUB_TASK  T  VALIDATION_EVERY_N_SECS  VALIDATION_EVERY_N_EPOCHS  NUM_EPOCHS
-export CUDA_VISIBLE_DEVICES=0; train_model cvae personachat_h3_dynamic_daily combine_hdbscan_w2v_daily_2 11000 -1 0.2 30
+export CUDA_VISIBLE_DEVICES=0; train_model dialogwae personachat_h3_dynamic_daily combine_hdbscan_w2v_daily_8 11000 -1 0.2 30
